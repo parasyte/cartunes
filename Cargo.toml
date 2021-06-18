@@ -1,0 +1,28 @@
+[package]
+name = "cartunes"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+egui = "0.12"
+env_logger = "0.8"
+log = "0.4"
+pollster = "0.2"
+raw-window-handle = "0.3"
+thiserror = "1.0"
+wgpu = "0.8"
+winit = "0.25"
+winit_input_helper = "0.10"
+
+[dependencies.egui_wgpu_backend]
+git = "https://github.com/hasenbanck/egui_wgpu_backend.git"
+rev = "63a002c6a9b6c016e45806dd065864431caab621"
+
+[dependencies.egui_winit_platform]
+git = "https://github.com/parasyte/egui_winit_platform.git"
+rev = "85035c34b585e072f0b07ca8f801882834d7c379"
+features = ["clipboard", "webbrowser"]
+
+[patch.crates-io.egui]
+git = "https://github.com/emilk/egui.git"
+rev = "60fd70921df538c5cfab9918ddac1a2df5a06c66"
