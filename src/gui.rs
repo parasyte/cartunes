@@ -39,6 +39,8 @@ impl Gui {
         };
         let rpass = RenderPass::new(&gpu.device, wgpu::TextureFormat::Bgra8UnormSrgb, 1);
 
+        install_fonts(&platform.context());
+
         Self {
             start_time: Instant::now(),
             platform,
@@ -180,28 +182,7 @@ impl Gui {
             };
             ctx.set_style(style);
 
-            // Install fonts. This only needs to be done once.
-            let mut fonts = egui::FontDefinitions::default();
-            if fonts.font_data.is_empty() {
-                fonts.font_data.insert(
-                    "ProggyClean".to_owned(),
-                    Cow::Borrowed(include_bytes!("../fonts/ProggyClean.ttf")),
-                );
-                fonts.font_data.insert(
-                    "Ubuntu-Regular".to_owned(),
-                    Cow::Borrowed(include_bytes!("../fonts/Ubuntu-Regular.ttf")),
-                );
-                fonts.font_data.insert(
-                    "Ubuntu-Light".to_owned(),
-                    Cow::Borrowed(include_bytes!("../fonts/Ubuntu-Light.ttf")),
-                );
-            }
-            if let Some(font) = fonts.fonts_for_family.get_mut(&egui::FontFamily::Monospace) {
-                if font.is_empty() {
-                    font.push("ProggyClean".to_owned());
-                    font.push("Ubuntu-Light".to_owned());
-                }
-            }
+            let mut fonts = ctx.fonts().definitions().clone();
             if let Some(font) = fonts
                 .fonts_for_family
                 .get_mut(&egui::FontFamily::Proportional)
@@ -217,11 +198,6 @@ impl Gui {
                     .to_owned(),
                 );
             }
-            if let Some(mut heading) = fonts.family_and_size.get_mut(&egui::TextStyle::Heading) {
-                // The default heading size is WAY too big.
-                heading.1 = 16.0;
-            }
-
             ctx.set_fonts(fonts);
         }
     }
@@ -230,4 +206,33 @@ impl Gui {
     pub(crate) fn change_theme(&mut self, theme: Theme) {
         self.theme = Some(theme);
     }
+}
+
+/// Install embedded fonts.
+fn install_fonts(ctx: &egui::CtxRef) {
+    let mut fonts = egui::FontDefinitions::default();
+    fonts.font_data.insert(
+        "ProggyClean".to_owned(),
+        Cow::Borrowed(include_bytes!("../fonts/ProggyClean.ttf")),
+    );
+    fonts.font_data.insert(
+        "Ubuntu-Regular".to_owned(),
+        Cow::Borrowed(include_bytes!("../fonts/Ubuntu-Regular.ttf")),
+    );
+    fonts.font_data.insert(
+        "Ubuntu-Light".to_owned(),
+        Cow::Borrowed(include_bytes!("../fonts/Ubuntu-Light.ttf")),
+    );
+
+    if let Some(font) = fonts.fonts_for_family.get_mut(&egui::FontFamily::Monospace) {
+        font.push("ProggyClean".to_owned());
+        font.push("Ubuntu-Light".to_owned());
+    }
+
+    if let Some(mut heading) = fonts.family_and_size.get_mut(&egui::TextStyle::Heading) {
+        // The default heading size is WAY too big.
+        heading.1 = 16.0;
+    }
+
+    ctx.set_fonts(fonts);
 }
