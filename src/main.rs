@@ -48,6 +48,7 @@ fn main() -> Result<(), Error> {
         } = event
         {
             gui.change_theme(theme);
+            window.request_redraw();
         }
 
         // Draw the current frame

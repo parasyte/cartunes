@@ -513,7 +513,7 @@ dependencies = [
 [[package]]
 name = "egui_winit_platform"
 version = "0.8.0"
-source = "git+https://github.com/parasyte/egui_winit_platform.git?rev=85035c34b585e072f0b07ca8f801882834d7c379#85035c34b585e072f0b07ca8f801882834d7c379"
+source = "git+https://github.com/parasyte/egui_winit_platform.git?rev=982a11f2f6b2e94861a67cc7ed9104ae4f514394#982a11f2f6b2e94861a67cc7ed9104ae4f514394"
 dependencies = [
  "copypasta",
  "egui",

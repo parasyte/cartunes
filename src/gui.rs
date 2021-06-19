@@ -2,6 +2,7 @@ use crate::gpu::Gpu;
 use egui::ClippedMesh;
 use egui_wgpu_backend::{RenderPass, ScreenDescriptor};
 use egui_winit_platform::{Platform, PlatformDescriptor};
+use std::borrow::Cow;
 use std::time::Instant;
 use winit::dpi::PhysicalSize;
 use winit::window::Theme;
@@ -136,29 +137,91 @@ impl Gui {
     fn about(&mut self, ctx: &egui::CtxRef) {
         egui::Window::new("About CarTunes")
             .open(&mut self.about)
+            .collapsible(false)
+            .default_pos((200.0, 150.0))
+            .fixed_size((350.0, 100.0))
             .show(ctx, |ui| {
-                ui.label("Version 1.0 YOLO!");
+                ui.add_space(5.0);
+                ui.label(concat!("CarTunes version ", env!("CARGO_PKG_VERSION")));
+                ui.add_space(10.0);
+                ui.label(env!("CARGO_PKG_DESCRIPTION"));
+                ui.label(concat!("By: ", env!("CARGO_PKG_AUTHORS")));
+                ui.add_space(10.0);
+                ui.horizontal(|ui| {
+                    ui.label("Website:");
+                    ui.hyperlink(env!("CARGO_PKG_HOMEPAGE"));
+                });
             });
     }
 
     /// Configure the theme based on system settings.
     fn update_theme(&mut self, ctx: &egui::CtxRef) {
         if let Some(theme) = self.theme.take() {
+            // The default light theme has grey fonts. We want solid black.
             let style = egui::Style {
                 visuals: match theme {
-                    Theme::Light => egui::Visuals::light(),
                     Theme::Dark => egui::Visuals::dark(),
+                    Theme::Light => egui::Visuals {
+                        widgets: egui::style::Widgets {
+                            noninteractive: egui::style::WidgetVisuals {
+                                fg_stroke: egui::Stroke::new(1.0, egui::Color32::BLACK),
+                                ..egui::style::Widgets::light().noninteractive
+                            },
+                            inactive: egui::style::WidgetVisuals {
+                                fg_stroke: egui::Stroke::new(1.0, egui::Color32::BLACK),
+                                ..egui::style::Widgets::light().noninteractive
+                            },
+                            ..egui::style::Widgets::light()
+                        },
+                        ..egui::Visuals::light()
+                    },
                 },
                 ..egui::Style::default()
             };
             ctx.set_style(style);
 
+            // Install fonts. This only needs to be done once.
             let mut fonts = egui::FontDefinitions::default();
+            if fonts.font_data.is_empty() {
+                fonts.font_data.insert(
+                    "ProggyClean".to_owned(),
+                    Cow::Borrowed(include_bytes!("../fonts/ProggyClean.ttf")),
+                );
+                fonts.font_data.insert(
+                    "Ubuntu-Regular".to_owned(),
+                    Cow::Borrowed(include_bytes!("../fonts/Ubuntu-Regular.ttf")),
+                );
+                fonts.font_data.insert(
+                    "Ubuntu-Light".to_owned(),
+                    Cow::Borrowed(include_bytes!("../fonts/Ubuntu-Light.ttf")),
+                );
+            }
+            if let Some(font) = fonts.fonts_for_family.get_mut(&egui::FontFamily::Monospace) {
+                if font.is_empty() {
+                    font.push("ProggyClean".to_owned());
+                    font.push("Ubuntu-Light".to_owned());
+                }
+            }
+            if let Some(font) = fonts
+                .fonts_for_family
+                .get_mut(&egui::FontFamily::Proportional)
+            {
+                // Set the appropriate font weight for the theme.
+                // The best choice was found experimentally.
+                font.clear();
+                font.push(
+                    match theme {
+                        Theme::Dark => "Ubuntu-Light",
+                        Theme::Light => "Ubuntu-Regular",
+                    }
+                    .to_owned(),
+                );
+            }
             if let Some(mut heading) = fonts.family_and_size.get_mut(&egui::TextStyle::Heading) {
+                // The default heading size is WAY too big.
                 heading.1 = 16.0;
             }
 
-            // TODO: Font color in light mode sucks?
             ctx.set_fonts(fonts);
         }
     }

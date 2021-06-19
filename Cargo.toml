@@ -1,10 +1,15 @@
 [package]
 name = "cartunes"
 version = "0.1.0"
+description = "Simple tuning comparison app for iRacing."
+authors = ["Jay Oster <jay@kodewerx.org>"]
+homepage = "https://github.com/parasyte/cartunes"
+repository = "https://github.com/parasyte/cartunes"
 edition = "2018"
+readme = "README.md"
+license = "MIT"
 
 [dependencies]
-egui = "0.12"
 env_logger = "0.8"
 log = "0.4"
 pollster = "0.2"
@@ -14,13 +19,19 @@ wgpu = "0.8"
 winit = "0.25"
 winit_input_helper = "0.10"
 
+[dependencies.egui]
+version = "0.12"
+default-features = false
+features = ["single_threaded"]
+
 [dependencies.egui_wgpu_backend]
 git = "https://github.com/hasenbanck/egui_wgpu_backend.git"
 rev = "63a002c6a9b6c016e45806dd065864431caab621"
 
 [dependencies.egui_winit_platform]
 git = "https://github.com/parasyte/egui_winit_platform.git"
-rev = "85035c34b585e072f0b07ca8f801882834d7c379"
+rev = "982a11f2f6b2e94861a67cc7ed9104ae4f514394"
+default-features = false
 features = ["clipboard", "webbrowser"]
 
 [patch.crates-io.egui]
