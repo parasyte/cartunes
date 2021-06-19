@@ -183,14 +183,10 @@ impl Gui {
             {
                 // Set the appropriate font weight for the theme.
                 // The best choice was found experimentally.
-                font.clear();
-                font.push(
-                    match theme {
-                        Theme::Dark => "Ubuntu-Light",
-                        Theme::Light => "Ubuntu-Regular",
-                    }
-                    .to_owned(),
-                );
+                font[0] = match theme {
+                    Theme::Dark => "Ubuntu-Light".to_owned(),
+                    Theme::Light => "Ubuntu-Regular".to_owned(),
+                };
             }
             ctx.set_fonts(fonts);
         }
@@ -221,6 +217,12 @@ fn install_fonts(ctx: &egui::CtxRef) {
     if let Some(font) = fonts.fonts_for_family.get_mut(&egui::FontFamily::Monospace) {
         font.push("ProggyClean".to_owned());
         font.push("Ubuntu-Light".to_owned());
+    }
+    if let Some(font) = fonts
+        .fonts_for_family
+        .get_mut(&egui::FontFamily::Proportional)
+    {
+        font.push("Ubuntu-Regular".to_owned());
     }
 
     if let Some(mut heading) = fonts.family_and_size.get_mut(&egui::TextStyle::Heading) {
