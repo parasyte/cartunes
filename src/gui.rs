@@ -76,7 +76,7 @@ impl Gui {
         // Begin the egui frame.
         self.platform.begin_frame();
 
-        // Draw the demo application.
+        // Draw the application GUI.
         self.ui(&self.platform.context());
 
         // End the egui frame and create all paint jobs to prepare for rendering.

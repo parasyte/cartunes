@@ -10,19 +10,15 @@ readme = "README.md"
 license = "MIT"
 
 [dependencies]
+egui = { version = "0.12", default-features = false, features = ["single_threaded"] }
 env_logger = "0.8"
-log = "0.4"
+log = { version = "0.4", features = ["release_max_level_warn"] }
 pollster = "0.2"
 raw-window-handle = "0.3"
 thiserror = "1.0"
 wgpu = "0.8"
 winit = "0.25"
 winit_input_helper = "0.10"
-
-[dependencies.egui]
-version = "0.12"
-default-features = false
-features = ["single_threaded"]
 
 [dependencies.egui_wgpu_backend]
 git = "https://github.com/hasenbanck/egui_wgpu_backend.git"
