@@ -31,11 +31,14 @@ impl Framework {
     ) -> Self {
         let width = size.width;
         let height = size.height;
+        let font_definitions = create_fonts();
+        let style = create_style(theme);
         let platform = Platform::new(PlatformDescriptor {
             physical_width: width,
             physical_height: height,
             scale_factor,
-            ..PlatformDescriptor::default()
+            font_definitions,
+            style,
         });
         let screen_descriptor = ScreenDescriptor {
             physical_width: width,
@@ -44,15 +47,13 @@ impl Framework {
         };
         let rpass = RenderPass::new(&gpu.device, wgpu::TextureFormat::Bgra8UnormSrgb, 1);
 
-        install_fonts(&platform.context());
-
         Self {
             start_time: Instant::now(),
             platform,
             screen_descriptor,
             rpass,
             paint_jobs: Vec::new(),
-            theme: Some(theme),
+            theme: None,
             gui,
         }
     }
@@ -128,30 +129,16 @@ impl Framework {
     /// Configure the theme based on system settings.
     fn update_theme(&mut self, ctx: &egui::CtxRef) {
         if let Some(theme) = self.theme.take() {
-            // The default light theme has grey fonts. We want solid black.
-            let style = egui::Style {
-                visuals: match theme {
-                    Theme::Dark => egui::Visuals::dark(),
-                    Theme::Light => {
-                        let mut visuals = egui::Visuals::light();
+            // Set the style
+            ctx.set_style(create_style(theme));
 
-                        visuals.widgets.noninteractive.fg_stroke.color = egui::Color32::BLACK;
-                        visuals.widgets.inactive.fg_stroke.color = egui::Color32::BLACK;
-
-                        visuals
-                    }
-                },
-                ..egui::Style::default()
-            };
-            ctx.set_style(style);
-
+            // Set the appropriate font weight for the theme.
+            // The best choice was found experimentally.
             let mut fonts = ctx.fonts().definitions().clone();
             if let Some(font) = fonts
                 .fonts_for_family
                 .get_mut(&egui::FontFamily::Proportional)
             {
-                // Set the appropriate font weight for the theme.
-                // The best choice was found experimentally.
                 font[0] = match theme {
                     Theme::Dark => "Ubuntu-Light".to_owned(),
                     Theme::Light => "Ubuntu-Regular".to_owned(),
@@ -162,9 +149,11 @@ impl Framework {
     }
 }
 
-/// Install embedded fonts.
-fn install_fonts(ctx: &egui::CtxRef) {
+/// Create fonts for egui from the embedded TTFs.
+fn create_fonts() -> egui::FontDefinitions {
     let mut fonts = egui::FontDefinitions::default();
+
+    // Add font data
     fonts.font_data.insert(
         "ProggyClean".to_owned(),
         Cow::Borrowed(include_bytes!("../fonts/ProggyClean.ttf")),
@@ -178,6 +167,7 @@ fn install_fonts(ctx: &egui::CtxRef) {
         Cow::Borrowed(include_bytes!("../fonts/Ubuntu-Light.ttf")),
     );
 
+    // Set font families
     if let Some(font) = fonts.fonts_for_family.get_mut(&egui::FontFamily::Monospace) {
         font.push("ProggyClean".to_owned());
         font.push("Ubuntu-Light".to_owned());
@@ -194,5 +184,24 @@ fn install_fonts(ctx: &egui::CtxRef) {
         heading.1 = 16.0;
     }
 
-    ctx.set_fonts(fonts);
+    fonts
+}
+
+/// Create the default style for egui based on system settings.
+fn create_style(theme: Theme) -> egui::Style {
+    // The default light theme has grey fonts. We want solid black.
+    egui::Style {
+        visuals: match theme {
+            Theme::Dark => egui::Visuals::dark(),
+            Theme::Light => {
+                let mut visuals = egui::Visuals::light();
+
+                visuals.widgets.noninteractive.fg_stroke.color = egui::Color32::BLACK;
+                visuals.widgets.inactive.fg_stroke.color = egui::Color32::BLACK;
+
+                visuals
+            }
+        },
+        ..egui::Style::default()
+    }
 }
