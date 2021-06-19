@@ -169,7 +169,7 @@ impl Gui {
                             },
                             inactive: egui::style::WidgetVisuals {
                                 fg_stroke: egui::Stroke::new(1.0, egui::Color32::BLACK),
-                                ..egui::style::Widgets::light().noninteractive
+                                ..egui::style::Widgets::light().inactive
                             },
                             ..egui::style::Widgets::light()
                         },
