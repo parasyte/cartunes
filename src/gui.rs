@@ -163,20 +163,14 @@ impl Gui {
             let style = egui::Style {
                 visuals: match theme {
                     Theme::Dark => egui::Visuals::dark(),
-                    Theme::Light => egui::Visuals {
-                        widgets: egui::style::Widgets {
-                            noninteractive: egui::style::WidgetVisuals {
-                                fg_stroke: egui::Stroke::new(1.0, egui::Color32::BLACK),
-                                ..egui::style::Widgets::light().noninteractive
-                            },
-                            inactive: egui::style::WidgetVisuals {
-                                fg_stroke: egui::Stroke::new(1.0, egui::Color32::BLACK),
-                                ..egui::style::Widgets::light().inactive
-                            },
-                            ..egui::style::Widgets::light()
-                        },
-                        ..egui::Visuals::light()
-                    },
+                    Theme::Light => {
+                        let mut visuals = egui::Visuals::light();
+
+                        visuals.widgets.noninteractive.fg_stroke.color = egui::Color32::BLACK;
+                        visuals.widgets.inactive.fg_stroke.color = egui::Color32::BLACK;
+
+                        visuals
+                    }
                 },
                 ..egui::Style::default()
             };
