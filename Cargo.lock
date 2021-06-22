@@ -141,6 +141,7 @@ dependencies = [
 name = "cartunes"
 version = "0.1.0"
 dependencies = [
+ "copypasta",
  "directories",
  "egui",
  "egui_wgpu_backend",

@@ -1,8 +1,8 @@
-use std::collections::VecDeque;
-
 use crate::config::Config;
+use copypasta::{ClipboardContext, ClipboardProvider};
 use egui::Widget;
-use log::error;
+use std::collections::{HashMap, VecDeque};
+use std::time::{Duration, Instant};
 
 /// Manages all state required for rendering the GUI.
 pub(crate) struct Gui {
@@ -14,6 +14,9 @@ pub(crate) struct Gui {
 
     /// Show an error message.
     show_errors: VecDeque<ShowError>,
+
+    /// Show a tooltip.
+    show_tooltips: HashMap<egui::Id, (String, Instant)>,
 }
 
 /// Holds state for an error message to show to the user, and provides a feedback mechanism for the
@@ -50,6 +53,7 @@ impl Gui {
             about: false,
             config,
             show_errors,
+            show_tooltips: HashMap::new(),
         }
     }
 
@@ -139,9 +143,27 @@ impl Gui {
 
                     ui.separator();
                     ui.horizontal(|ui| {
+                        let tooltip_id = egui::Id::new("error_copypasta");
+
                         if ui.button("Copy to Clipboard").clicked() {
-                            error!("TODO: Copy to clipboard");
+                            let mut copied = false;
+                            if let Ok(mut clipboard) = ClipboardContext::new() {
+                                copied = clipboard.set_contents(err.error.to_string()).is_ok();
+                            }
+
+                            let label = if copied {
+                                "Copied!"
+                            } else {
+                                // XXX: Maybe add a new error message? The current error would
+                                // have to be dismissed to see it!
+                                "Sorry, but the clipboard isn't working..."
+                            };
+
+                            self.add_tooltip(tooltip_id, label);
                         }
+
+                        // Show the copy button tooltip for 3 seconds
+                        self.tooltip(ctx, ui, tooltip_id, Duration::from_secs(3));
 
                         ui.with_layout(egui::Layout::right_to_left(), |ui| {
                             if ui.button(&err.buttons.0.label).clicked() {
@@ -167,6 +189,42 @@ impl Gui {
             result
         } else {
             true
+        }
+    }
+
+    /// Add a tooltip to the GUI.
+    ///
+    /// The tooltip must be displayed until it expires or this will "leak" tooltips.
+    fn add_tooltip(&mut self, tooltip_id: egui::Id, label: &str) {
+        self.show_tooltips
+            .insert(tooltip_id, (label.to_owned(), Instant::now()));
+    }
+
+    /// Show a tooltip at the current cursor position for the given duration.
+    ///
+    /// The tooltip must have already been added for it to be displayed.
+    fn tooltip(
+        &mut self,
+        ctx: &egui::CtxRef,
+        ui: &egui::Ui,
+        tooltip_id: egui::Id,
+        duration: Duration,
+    ) {
+        if let Some((label, created)) = self.show_tooltips.remove(&tooltip_id) {
+            if Instant::now().duration_since(created) < duration {
+                let tooltip_position = ui.available_rect_before_wrap().min;
+                egui::containers::popup::show_tooltip_at(
+                    ctx,
+                    tooltip_id,
+                    Some(tooltip_position),
+                    |ui| {
+                        ui.label(&label);
+                    },
+                );
+
+                // Put the tooltip back until it expires
+                self.show_tooltips.insert(tooltip_id, (label, created));
+            }
         }
     }
 }

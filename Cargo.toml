@@ -11,6 +11,7 @@ license = "MIT"
 resolver = "2"
 
 [dependencies]
+copypasta = "0.7"
 egui = { version = "0.12", default-features = false, features = ["single_threaded"] }
 egui_wgpu_backend = "0.9"
 directories = "3.0"
