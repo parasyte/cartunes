@@ -53,10 +53,12 @@ impl Gui {
         }
     }
 
-    /// Create the UI using egui.
+    /// Draw the UI using egui.
     pub(crate) fn ui(&mut self, ctx: &egui::CtxRef) {
-        let enabled = self.error(ctx);
+        // Show an error message (if any) in a modal window by disabling the rest of the UI.
+        let enabled = self.error_window(ctx);
 
+        // Draw the menu bar
         egui::TopBottomPanel::top("menubar_container").show(ctx, |ui| {
             ui.set_enabled(enabled);
             egui::menu::bar(ui, |ui| {
@@ -69,16 +71,18 @@ impl Gui {
             });
         });
 
+        // Draw the main content area
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.set_enabled(enabled);
             ui.label("Hello, world!");
         });
 
-        self.about(ctx, enabled);
+        // Draw the about window (if requested by the user)
+        self.about_window(ctx, enabled);
     }
 
     /// Show "About" window.
-    fn about(&mut self, ctx: &egui::CtxRef, enabled: bool) {
+    fn about_window(&mut self, ctx: &egui::CtxRef, enabled: bool) {
         egui::Window::new("About CarTunes")
             .open(&mut self.about)
             .enabled(enabled)
@@ -108,22 +112,22 @@ impl Gui {
     }
 
     /// Show error window.
-    fn error(&mut self, ctx: &egui::CtxRef) -> bool {
+    fn error_window(&mut self, ctx: &egui::CtxRef) -> bool {
         let err = self.show_errors.pop_back();
         if let Some(err) = err {
-            // TODO: Need to add error context and button labels
             let mut result = true;
             let width = 500.0;
+            let height = 175.0;
             let red = egui::Color32::from_rgb(210, 40, 40);
 
             egui::Window::new("Error")
                 .collapsible(false)
                 .default_pos((100.0, 100.0))
-                .fixed_size((width, 175.0))
+                .fixed_size((width, height))
                 .show(ctx, |ui| {
                     ui.label(&err.context);
 
-                    egui::ScrollArea::from_max_height(300.0).show(ui, |ui| {
+                    egui::ScrollArea::from_max_height(height).show(ui, |ui| {
                         egui::TextEdit::multiline(&mut err.error.to_string())
                             .enabled(false)
                             .text_style(egui::TextStyle::Monospace)

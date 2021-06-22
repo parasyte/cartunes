@@ -36,8 +36,8 @@ default-features = false
 features = ["atty", "humantime", "termcolor"]
 
 [features]
-optimize = ["log/release_max_level_warn"]
 default = ["optimize"]
+optimize = ["log/release_max_level_warn"]
 
 [patch.crates-io.egui]
 git = "https://github.com/emilk/egui.git"
