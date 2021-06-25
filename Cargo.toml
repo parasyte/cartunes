@@ -12,7 +12,7 @@ resolver = "2"
 
 [dependencies]
 copypasta = "0.7"
-egui = { version = "0.12", default-features = false, features = ["single_threaded"] }
+egui = { version = "0.13", default-features = false, features = ["single_threaded"] }
 egui_wgpu_backend = "0.9"
 directories = "3.0"
 log = "0.4"
@@ -26,8 +26,7 @@ winit = "0.25"
 winit_input_helper = "0.10"
 
 [dependencies.egui_winit_platform]
-git = "https://github.com/hasenbanck/egui_winit_platform.git"
-rev = "ab576591949a2c0ac1494af52713a1771ff8326a"
+version = "0.9"
 default-features = false
 features = ["clipboard", "webbrowser"]
 
@@ -40,6 +39,6 @@ features = ["atty", "humantime", "termcolor"]
 default = ["optimize"]
 optimize = ["log/release_max_level_warn"]
 
-[patch.crates-io.egui]
-git = "https://github.com/emilk/egui.git"
-rev = "60fd70921df538c5cfab9918ddac1a2df5a06c66"
+[patch.crates-io.egui_wgpu_backend]
+git = "https://github.com/parasyte/egui_wgpu_backend.git"
+rev = "75781ebd9ecd6264af502543650a8485fc2667ab"
