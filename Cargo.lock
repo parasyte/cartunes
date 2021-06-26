@@ -158,7 +158,6 @@ dependencies = [
  "egui_winit_platform",
  "env_logger",
  "log",
- "num_enum",
  "pollster",
  "raw-window-handle",
  "thiserror",
@@ -567,7 +566,6 @@ dependencies = [
 [[package]]
 name = "egui_wgpu_backend"
 version = "0.9.0"
-source = "git+https://github.com/parasyte/egui_wgpu_backend.git?rev=75781ebd9ecd6264af502543650a8485fc2667ab#75781ebd9ecd6264af502543650a8485fc2667ab"
 dependencies = [
  "bytemuck",
  "epi",

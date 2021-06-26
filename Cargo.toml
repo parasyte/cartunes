@@ -16,7 +16,6 @@ egui = { version = "0.13", default-features = false, features = ["single_threade
 egui_wgpu_backend = "0.9"
 directories = "3.0"
 log = "0.4"
-num_enum = { version = "0.5", default-features = false }
 pollster = "0.2"
 raw-window-handle = "0.3"
 thiserror = "1.0"
@@ -40,5 +39,6 @@ default = ["optimize"]
 optimize = ["log/release_max_level_warn"]
 
 [patch.crates-io.egui_wgpu_backend]
-git = "https://github.com/parasyte/egui_wgpu_backend.git"
-rev = "75781ebd9ecd6264af502543650a8485fc2667ab"
+# git = "https://github.com/parasyte/egui_wgpu_backend.git"
+# rev = "75781ebd9ecd6264af502543650a8485fc2667ab"
+path = "../../other-projects/egui_wgpu_backend"

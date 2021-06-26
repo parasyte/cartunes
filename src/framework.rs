@@ -5,17 +5,12 @@ use directories::ProjectDirs;
 use egui::ClippedMesh;
 use egui_wgpu_backend::{RenderPass, ScreenDescriptor};
 use egui_winit_platform::{Platform, PlatformDescriptor};
-use num_enum::{FromPrimitive, IntoPrimitive};
 use std::borrow::Cow;
-use std::marker::PhantomData;
 use std::path::PathBuf;
-use std::sync::{
-    atomic::{AtomicU8, Ordering},
-    Arc,
-};
 use std::time::Instant;
 use thiserror::Error;
 use winit::dpi::PhysicalSize;
+use winit::event_loop::EventLoopProxy;
 use winit::window::Theme;
 
 /// Manages all state required for rendering egui.
@@ -37,70 +32,25 @@ pub(crate) enum Error {
     ReadConfig(#[from] ConfigError),
 }
 
-/// Type representing a choice that the user needs to make, e.g. in response to an error.
-///
-/// The generic type needs to be convertible to and from `u8`.
-#[derive(Clone, Debug)]
-pub(crate) struct UserChoice<T>(Arc<AtomicU8>, PhantomData<T>);
+/// User event handling is performed with this type.
+#[derive(Debug, Eq, PartialEq)]
+pub(crate) enum UserEvent {
+    /// Configuration error handling events
+    ConfigHandler(ConfigHandler),
+
+    /// User wants to exit without saving.
+    Exit,
+}
 
 /// How the user wants to handle errors with reading the config file.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, FromPrimitive, IntoPrimitive)]
-#[repr(u8)]
+#[derive(Debug, Eq, PartialEq)]
 pub(crate) enum ConfigHandler {
-    /// There were no errors.
-    #[num_enum(default)]
-    None,
+    /// There were no errors,
+    /// or there were errors and the user wants to replace the config with a new one.
+    Replace,
 
     /// There were errors and the user wants to keep the existing config.
     Keep,
-
-    /// There were errors and the user wants to replace the config with a new one.
-    Replace,
-}
-
-/// Whether the user wants to exit the app.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, FromPrimitive, IntoPrimitive)]
-#[repr(u8)]
-pub(crate) enum Exiting {
-    /// Continue running the app.
-    #[num_enum(default)]
-    No,
-
-    /// The user has requested to exit without saving.
-    Yes,
-}
-
-impl<T> UserChoice<T>
-where
-    T: From<u8> + Default,
-    u8: From<T>,
-{
-    /// Create a new user choice for any type that can be converted to and from `u8`.
-    pub(crate) fn new() -> UserChoice<T> {
-        UserChoice(Arc::new(AtomicU8::new(T::default().into())), PhantomData)
-    }
-
-    /// Atomically get the current choice.
-    pub(crate) fn get(&self) -> T {
-        T::from(self.0.load(Ordering::Relaxed))
-    }
-
-    /// Atomically set the choice to a new value.
-    pub(crate) fn set(&self, value: T) {
-        self.0.store(value.into(), Ordering::Relaxed);
-    }
-}
-
-impl Default for ConfigHandler {
-    fn default() -> Self {
-        Self::None
-    }
-}
-
-impl Default for Exiting {
-    fn default() -> Self {
-        Self::No
-    }
 }
 
 impl Framework {
@@ -142,7 +92,7 @@ impl Framework {
     }
 
     /// Handle input events from the window manager.
-    pub(crate) fn handle_event(&mut self, event: &winit::event::Event<'_, ()>) {
+    pub(crate) fn handle_event<T>(&mut self, event: &winit::event::Event<'_, T>) {
         self.platform.handle_event(event);
     }
 
@@ -237,7 +187,7 @@ impl Framework {
     /// is unwrapped, and may at some time in the future be changed to a [`ConfigHandler::Replace`]
     /// when the user makes a decision.
     pub(crate) fn unwrap_config(
-        keep_config: UserChoice<ConfigHandler>,
+        event_loop_proxy: EventLoopProxy<UserEvent>,
         config: Result<Option<Config>, Error>,
     ) -> (Config, Option<ShowError>) {
         match config {
@@ -245,7 +195,9 @@ impl Framework {
             Ok(None) => (Config::new(config_path(), Self::min_size()), None),
             Err(err) => {
                 // Default to keep when there is an error
-                keep_config.set(ConfigHandler::Keep);
+                event_loop_proxy
+                    .send_event(UserEvent::ConfigHandler(ConfigHandler::Keep))
+                    .expect("Event loop must exist");
 
                 let err = ShowError::new(
                     err,
@@ -254,7 +206,9 @@ impl Framework {
                     (
                         ErrorButton::new("Keep", || ()),
                         ErrorButton::new("Replace", move || {
-                            keep_config.set(ConfigHandler::Replace);
+                            event_loop_proxy
+                                .send_event(UserEvent::ConfigHandler(ConfigHandler::Replace))
+                                .expect("Event loop must exist");
                         }),
                     ),
                 );
@@ -271,7 +225,7 @@ impl Framework {
     /// requests to exit anyway.
     pub(crate) fn save_config(
         &mut self,
-        exiting: UserChoice<Exiting>,
+        event_loop_proxy: EventLoopProxy<UserEvent>,
         window: &winit::window::Window,
     ) -> bool {
         self.gui.config.update_window(window);
@@ -285,7 +239,9 @@ impl Framework {
                     (
                         ErrorButton::new("Stay", || ()),
                         ErrorButton::new("Exit Anyway", move || {
-                            exiting.set(Exiting::Yes);
+                            event_loop_proxy
+                                .send_event(UserEvent::Exit)
+                                .expect("Event loop must exist");
                         }),
                     ),
                 );

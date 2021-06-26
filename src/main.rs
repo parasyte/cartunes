@@ -1,6 +1,6 @@
 #![deny(clippy::all)]
 
-use crate::framework::{ConfigHandler, Exiting, Framework, UserChoice};
+use crate::framework::{ConfigHandler, Framework, UserEvent};
 use crate::gpu::{Error as GpuError, Gpu};
 use crate::gui::Gui;
 use log::error;
@@ -31,9 +31,7 @@ enum Error {
 }
 
 /// Load configuration and create a window.
-fn create_window(
-    keep_config: UserChoice<ConfigHandler>,
-) -> Result<(EventLoop<()>, winit::window::Window, Gpu, Framework), Error> {
+fn create_window() -> Result<(EventLoop<UserEvent>, winit::window::Window, Gpu, Framework), Error> {
     let config = Framework::load_config();
 
     let window_builder = if let Ok(Some(config)) = config.as_ref() {
@@ -48,7 +46,7 @@ fn create_window(
         WindowBuilder::new()
     };
 
-    let event_loop = EventLoop::new();
+    let event_loop = EventLoop::with_user_event();
     let window = window_builder
         .with_title("CarTunes")
         .with_min_inner_size(Framework::min_size())
@@ -63,7 +61,7 @@ fn create_window(
         #[cfg(not(target_os = "windows"))]
         let theme = Theme::Dark;
 
-        let (config, error) = Framework::unwrap_config(keep_config, config);
+        let (config, error) = Framework::unwrap_config(event_loop.create_proxy(), config);
 
         let gui = Gui::new(config, error);
         let gpu = Gpu::new(&window, window_size)?;
@@ -79,61 +77,14 @@ fn create_window(
 fn main() -> Result<(), Error> {
     env_logger::init();
 
-    let keep_config = UserChoice::<ConfigHandler>::new();
-    let exiting = UserChoice::<Exiting>::new();
-
-    let (event_loop, window, mut gpu, mut framework) = create_window(keep_config.clone())?;
+    let (event_loop, window, mut gpu, mut framework) = create_window()?;
+    let event_loop_proxy = event_loop.create_proxy();
     let mut input = WinitInputHelper::new();
+    let mut keep_config = ConfigHandler::Replace;
 
     event_loop.run(move |event, _, control_flow| {
-        // Check for exit events
-        if exiting.get() == Exiting::Yes {
-            *control_flow = ControlFlow::Exit;
-            return;
-        }
-
         // Update egui inputs
         framework.handle_event(&event);
-
-        if let Event::WindowEvent { ref event, .. } = event {
-            match event {
-                WindowEvent::ThemeChanged(theme) => {
-                    framework.change_theme(*theme);
-                    window.request_redraw();
-                }
-                WindowEvent::CloseRequested => {
-                    // Exit immediately if we've been asked to keep the config file, or if saving was successful
-                    if keep_config.get() == ConfigHandler::Keep
-                        || framework.save_config(exiting.clone(), &window)
-                    {
-                        *control_flow = ControlFlow::Exit;
-                        return;
-                    }
-                }
-                _ => (),
-            }
-        }
-
-        // Draw the current frame
-        if let Event::RedrawRequested(_) = event {
-            // Prepare egui
-            framework.prepare();
-
-            let (mut encoder, frame) = match gpu.prepare() {
-                Ok((encoder, frame)) => (encoder, frame),
-                Err(err) => {
-                    error!("gpu.prepare() failed: {}", err);
-                    *control_flow = ControlFlow::Exit;
-                    return;
-                }
-            };
-
-            // Render egui
-            framework.render(&mut encoder, &frame.output.view, &gpu);
-
-            // Complete frame
-            gpu.queue.submit(Some(encoder.finish()));
-        }
 
         // Handle input events
         if input.update(&event) {
@@ -152,6 +103,53 @@ fn main() -> Result<(), Error> {
 
             // Update internal state and request a redraw
             window.request_redraw();
+        }
+
+        match event {
+            Event::UserEvent(event) => match event {
+                UserEvent::ConfigHandler(config_handler) => {
+                    keep_config = config_handler;
+                }
+                UserEvent::Exit => {
+                    *control_flow = ControlFlow::Exit;
+                }
+            },
+            Event::WindowEvent { event, .. } => match event {
+                WindowEvent::ThemeChanged(theme) => {
+                    framework.change_theme(theme);
+                    window.request_redraw();
+                }
+                WindowEvent::CloseRequested => {
+                    // Exit immediately if we've been asked to keep the config file,
+                    // or if saving was successful
+                    if keep_config == ConfigHandler::Keep
+                        || framework.save_config(event_loop_proxy.clone(), &window)
+                    {
+                        *control_flow = ControlFlow::Exit;
+                    }
+                }
+                _ => (),
+            },
+            Event::RedrawRequested(_) => {
+                // Prepare egui
+                framework.prepare();
+
+                let (mut encoder, frame) = match gpu.prepare() {
+                    Ok((encoder, frame)) => (encoder, frame),
+                    Err(err) => {
+                        error!("gpu.prepare() failed: {}", err);
+                        *control_flow = ControlFlow::Exit;
+                        return;
+                    }
+                };
+
+                // Render egui
+                framework.render(&mut encoder, &frame.output.view, &gpu);
+
+                // Complete frame
+                gpu.queue.submit(Some(encoder.finish()));
+            }
+            _ => (),
         }
     });
 }
