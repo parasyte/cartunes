@@ -40,10 +40,11 @@ pub(crate) enum Error {
 /// Type representing a choice that the user needs to make, e.g. in response to an error.
 ///
 /// The generic type needs to be convertible to and from `u8`.
+#[derive(Clone, Debug)]
 pub(crate) struct UserChoice<T>(Arc<AtomicU8>, PhantomData<T>);
 
 /// How the user wants to handle errors with reading the config file.
-#[derive(Debug, Eq, PartialEq, FromPrimitive, IntoPrimitive)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, FromPrimitive, IntoPrimitive)]
 #[repr(u8)]
 pub(crate) enum ConfigHandler {
     /// There were no errors.
@@ -58,7 +59,7 @@ pub(crate) enum ConfigHandler {
 }
 
 /// Whether the user wants to exit the app.
-#[derive(Debug, Eq, PartialEq, FromPrimitive, IntoPrimitive)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, FromPrimitive, IntoPrimitive)]
 #[repr(u8)]
 pub(crate) enum Exiting {
     /// Continue running the app.
@@ -69,47 +70,36 @@ pub(crate) enum Exiting {
     Yes,
 }
 
-impl ConfigHandler {
-    /// Create a new config handler with a `UserChoice` wrapper.
-    pub(crate) fn new() -> UserChoice<Self> {
-        UserChoice(Arc::new(AtomicU8::new(Self::None.into())), PhantomData)
-    }
-}
-
-impl Exiting {
-    /// Create a new exiting request with a `UserChoice` wrapper.
-    pub(crate) fn new() -> UserChoice<Self> {
-        UserChoice(Arc::new(AtomicU8::new(Self::No.into())), PhantomData)
-    }
-}
-
-impl UserChoice<ConfigHandler> {
-    /// Get the current config handler value.
-    pub(crate) fn get(&self) -> ConfigHandler {
-        ConfigHandler::from(self.0.load(Ordering::Relaxed))
+impl<T> UserChoice<T>
+where
+    T: From<u8> + Default,
+    u8: From<T>,
+{
+    /// Create a new user choice for any type that can be converted to and from `u8`.
+    pub(crate) fn new() -> UserChoice<T> {
+        UserChoice(Arc::new(AtomicU8::new(T::default().into())), PhantomData)
     }
 
-    /// Set the config handler value.
-    pub(crate) fn set(&self, value: ConfigHandler) {
+    /// Atomically get the current choice.
+    pub(crate) fn get(&self) -> T {
+        T::from(self.0.load(Ordering::Relaxed))
+    }
+
+    /// Atomically set the choice to a new value.
+    pub(crate) fn set(&self, value: T) {
         self.0.store(value.into(), Ordering::Relaxed);
     }
 }
 
-impl UserChoice<Exiting> {
-    /// Get the current exiting request value.
-    pub(crate) fn get(&self) -> Exiting {
-        Exiting::from(self.0.load(Ordering::Relaxed))
-    }
-
-    /// Set the exiting request value.
-    pub(crate) fn set(&self, value: Exiting) {
-        self.0.store(value.into(), Ordering::Relaxed);
+impl Default for ConfigHandler {
+    fn default() -> Self {
+        Self::None
     }
 }
 
-impl<T> Clone for UserChoice<T> {
-    fn clone(&self) -> Self {
-        Self(Arc::clone(&self.0), PhantomData)
+impl Default for Exiting {
+    fn default() -> Self {
+        Self::No
     }
 }
 

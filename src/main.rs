@@ -79,8 +79,8 @@ fn create_window(
 fn main() -> Result<(), Error> {
     env_logger::init();
 
-    let keep_config = ConfigHandler::new();
-    let exiting = Exiting::new();
+    let keep_config = UserChoice::<ConfigHandler>::new();
+    let exiting = UserChoice::<Exiting>::new();
 
     let (event_loop, window, mut gpu, mut framework) = create_window(keep_config.clone())?;
     let mut input = WinitInputHelper::new();
