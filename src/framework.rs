@@ -347,7 +347,6 @@ fn create_style(theme: Theme) -> egui::Style {
                 let mut visuals = egui::Visuals::light();
 
                 visuals.widgets.noninteractive.fg_stroke.color = egui::Color32::BLACK;
-                visuals.widgets.inactive.fg_stroke.color = egui::Color32::BLACK;
 
                 visuals
             }

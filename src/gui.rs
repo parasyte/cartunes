@@ -2,9 +2,11 @@ use crate::config::Config;
 use crate::framework::UserEvent;
 use copypasta::{ClipboardContext, ClipboardProvider};
 use egui::{CtxRef, Widget};
+use std::borrow::Cow;
 use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
+use unicode_segmentation::UnicodeSegmentation;
 use winit::event_loop::EventLoopProxy;
 
 /// Manages all state required for rendering the GUI.
@@ -145,13 +147,15 @@ impl Gui {
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
                     let tuning_path = self.config.get_tuning_path();
+                    let label = truncate_with_ellipsis(tuning_path.to_string_lossy(), 50);
 
                     ui.label("Tuning files location:");
-                    egui::Label::new(tuning_path.to_string_lossy())
-                        .monospace()
-                        .ui(ui);
-
-                    if ui.button("Choose...").clicked() {
+                    if egui::Label::new(label)
+                        .code()
+                        .sense(egui::Sense::click())
+                        .ui(ui)
+                        .clicked()
+                    {
                         let event_loop_proxy = self.event_loop_proxy.clone();
                         let f = rfd::AsyncFileDialog::new()
                             .set_parent(window)
@@ -326,5 +330,29 @@ impl ErrorButton {
             label: label.to_owned(),
             action: Box::new(action),
         }
+    }
+}
+
+// XXX: Maybe this should be put somewhere else?
+/// String truncation with ellipsis.
+fn truncate_with_ellipsis<'a, S>(s: S, threshold: usize) -> Cow<'a, str>
+where
+    S: Into<Cow<'a, str>>,
+{
+    let s = s.into();
+    let threshold = threshold.max(4);
+    let graphemes = s.graphemes(true);
+    let size_hint = graphemes.size_hint();
+    let size_hint = size_hint.1.unwrap_or(size_hint.0);
+
+    if size_hint > threshold {
+        let mut s = graphemes.take(threshold - 3).collect::<String>();
+        s.push_str("...");
+
+        Cow::Owned(s)
+    } else if size_hint == 0 {
+        Cow::Borrowed("...")
+    } else {
+        s
     }
 }

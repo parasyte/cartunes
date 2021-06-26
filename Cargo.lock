@@ -185,6 +185,7 @@ dependencies = [
  "rfd",
  "thiserror",
  "toml_edit",
+ "unicode-segmentation",
  "wgpu",
  "winit",
  "winit_input_helper",
