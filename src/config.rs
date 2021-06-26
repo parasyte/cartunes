@@ -1,3 +1,4 @@
+use directories::UserDirs;
 use std::fs;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
@@ -60,12 +61,26 @@ impl Config {
     ///
     /// The path is allowed to be nonexistent. It will not be created until the TOML is written.
     pub(crate) fn new<P: AsRef<Path>>(path: P, min_size: PhysicalSize<u32>) -> Self {
-        Self {
+        let mut config = Self {
             doc_path: PathBuf::from(path.as_ref()),
             doc: include_str!("default.toml").parse().unwrap(),
             tuning_path: PathBuf::new(),
             min_size,
-        }
+        };
+
+        // Default tuning path is selected with the following precedence:
+        // 1. `$HOME/Documents/iRacing`
+        // 2. `$HOME/iRacing`
+        // 3. `iRacing`
+        // This path may not exist and is _not_ created by this application.
+        let mut tuning_path = UserDirs::new().map_or_else(PathBuf::default, |dirs| {
+            PathBuf::from(dirs.document_dir().unwrap_or_else(|| dirs.home_dir()))
+        });
+        tuning_path.push("iRacing");
+
+        config.update_tuning_path(tuning_path);
+
+        config
     }
 
     /// Parse TOML into a Config.

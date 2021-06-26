@@ -63,7 +63,7 @@ fn create_window() -> Result<(EventLoop<UserEvent>, winit::window::Window, Gpu, 
 
         let (config, error) = Framework::unwrap_config(event_loop.create_proxy(), config);
 
-        let gui = Gui::new(config, error);
+        let gui = Gui::new(config, event_loop.create_proxy(), error);
         let gpu = Gpu::new(&window, window_size)?;
         let framework = Framework::new(window_size, scale_factor, theme, gui, &gpu);
 
@@ -113,6 +113,10 @@ fn main() -> Result<(), Error> {
                 UserEvent::Exit => {
                     *control_flow = ControlFlow::Exit;
                 }
+                UserEvent::TuningPath(Some(tuning_path)) => {
+                    framework.update_tuning_path(tuning_path);
+                }
+                _ => (),
             },
             Event::WindowEvent { event, .. } => match event {
                 WindowEvent::ThemeChanged(theme) => {
@@ -132,7 +136,7 @@ fn main() -> Result<(), Error> {
             },
             Event::RedrawRequested(_) => {
                 // Prepare egui
-                framework.prepare();
+                framework.prepare(&window);
 
                 let (mut encoder, frame) = match gpu.prepare() {
                     Ok((encoder, frame)) => (encoder, frame),

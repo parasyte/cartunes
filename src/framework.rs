@@ -11,7 +11,7 @@ use std::time::Instant;
 use thiserror::Error;
 use winit::dpi::PhysicalSize;
 use winit::event_loop::EventLoopProxy;
-use winit::window::Theme;
+use winit::window::{Theme, Window};
 
 /// Manages all state required for rendering egui.
 pub(crate) struct Framework {
@@ -40,6 +40,8 @@ pub(crate) enum UserEvent {
 
     /// User wants to exit without saving.
     Exit,
+
+    TuningPath(Option<PathBuf>),
 }
 
 /// How the user wants to handle errors with reading the config file.
@@ -108,7 +110,7 @@ impl Framework {
     }
 
     /// Prepare egui.
-    pub(crate) fn prepare(&mut self) {
+    pub(crate) fn prepare(&mut self, window: &Window) {
         self.platform
             .update_time(self.start_time.elapsed().as_secs_f64());
 
@@ -118,7 +120,7 @@ impl Framework {
         // Draw the application GUI.
         let ctx = self.platform.context();
         self.update_theme(&ctx);
-        self.gui.ui(&ctx);
+        self.gui.ui(&ctx, window);
 
         // End the egui frame and create all paint jobs to prepare for rendering.
         // TODO: Handle output.needs_repaint to avoid game-mode continuous redraws.
@@ -251,6 +253,10 @@ impl Framework {
                 false
             }
         }
+    }
+
+    pub(crate) fn update_tuning_path(&mut self, tuning_path: PathBuf) {
+        self.gui.config.update_tuning_path(tuning_path);
     }
 
     /// Add an error message window to the GUI.

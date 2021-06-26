@@ -1,16 +1,25 @@
 use crate::config::Config;
+use crate::framework::UserEvent;
 use copypasta::{ClipboardContext, ClipboardProvider};
-use egui::Widget;
+use egui::{CtxRef, Widget};
 use std::collections::{HashMap, VecDeque};
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
+use winit::event_loop::EventLoopProxy;
 
 /// Manages all state required for rendering the GUI.
 pub(crate) struct Gui {
     /// Application configuration.
     pub(crate) config: Config,
 
+    /// An event loop proxy for sending user events.
+    event_loop_proxy: EventLoopProxy<UserEvent>,
+
     /// Show the "About..." window.
     about: bool,
+
+    /// Show the "Preferences..." window.
+    preferences: bool,
 
     /// Show an error message.
     show_errors: VecDeque<ShowError>,
@@ -43,22 +52,28 @@ pub(crate) struct ErrorButton {
 
 impl Gui {
     /// Create a GUI.
-    pub(crate) fn new(config: Config, show_error: Option<ShowError>) -> Self {
+    pub(crate) fn new(
+        config: Config,
+        event_loop_proxy: EventLoopProxy<UserEvent>,
+        show_error: Option<ShowError>,
+    ) -> Self {
         let mut show_errors = VecDeque::new();
         if let Some(err) = show_error {
             show_errors.push_front(err);
         }
 
         Self {
-            about: false,
             config,
+            event_loop_proxy,
+            about: false,
+            preferences: false,
             show_errors,
             show_tooltips: HashMap::new(),
         }
     }
 
     /// Draw the UI using egui.
-    pub(crate) fn ui(&mut self, ctx: &egui::CtxRef) {
+    pub(crate) fn ui(&mut self, ctx: &egui::CtxRef, window: &winit::window::Window) {
         // Show an error message (if any) in a modal window by disabling the rest of the UI.
         let enabled = self.error_window(ctx);
 
@@ -66,8 +81,17 @@ impl Gui {
         egui::TopBottomPanel::top("menubar_container").show(ctx, |ui| {
             ui.set_enabled(enabled);
             egui::menu::bar(ui, |ui| {
-                egui::menu::menu(ui, "File", |ui| if ui.button("Open...").clicked() {});
+                egui::menu::menu(ui, "File", |ui| {
+                    ui.set_min_width(200.0);
+                    if ui.button("Open...").clicked() {}
+                    if ui.button("Export...").clicked() {}
+                    ui.separator();
+                    if ui.button("Preferences").clicked() {
+                        self.preferences = true;
+                    }
+                });
                 egui::menu::menu(ui, "Help", |ui| {
+                    ui.set_min_width(200.0);
                     if ui.button("About CarTunes...").clicked() {
                         self.about = true;
                     }
@@ -81,8 +105,9 @@ impl Gui {
             ui.label("Hello, world!");
         });
 
-        // Draw the about window (if requested by the user)
+        // Draw the windows (if requested by the user)
         self.about_window(ctx, enabled);
+        self.prefs_window(ctx, enabled, window);
     }
 
     /// Show "About" window.
@@ -105,6 +130,47 @@ impl Gui {
                     ui.hyperlink(env!("CARGO_PKG_HOMEPAGE"));
                 });
             });
+    }
+
+    /// Show "Preferences" window.
+    fn prefs_window(&mut self, ctx: &CtxRef, enabled: bool, window: &winit::window::Window) {
+        let mut preferences = self.preferences;
+
+        egui::Window::new("CarTunes Preferences")
+            .open(&mut preferences)
+            .enabled(enabled)
+            .collapsible(false)
+            .default_pos((150.0, 150.0))
+            .fixed_size((500.0, 200.0))
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    let tuning_path = self.config.get_tuning_path();
+
+                    ui.label("Tuning files location:");
+                    egui::Label::new(tuning_path.to_string_lossy())
+                        .monospace()
+                        .ui(ui);
+
+                    if ui.button("Choose...").clicked() {
+                        let event_loop_proxy = self.event_loop_proxy.clone();
+                        let f = rfd::AsyncFileDialog::new()
+                            .set_parent(window)
+                            .set_directory(tuning_path)
+                            .pick_folder();
+
+                        std::thread::spawn(move || {
+                            let choice = pollster::block_on(f)
+                                .map(|selected| PathBuf::from(selected.path()));
+
+                            event_loop_proxy
+                                .send_event(UserEvent::TuningPath(choice))
+                                .expect("Event loop must exist");
+                        });
+                    }
+                });
+            });
+
+        self.preferences = preferences;
     }
 
     /// Add an error to the GUI.
