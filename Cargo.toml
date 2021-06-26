@@ -13,7 +13,7 @@ resolver = "2"
 [dependencies]
 copypasta = "0.7"
 egui = { version = "0.13", default-features = false, features = ["single_threaded"] }
-egui_wgpu_backend = "0.9"
+egui_wgpu_backend = "0.10"
 directories = "3.0"
 log = "0.4"
 pollster = "0.2"
@@ -38,8 +38,3 @@ features = ["atty", "humantime", "termcolor"]
 [features]
 default = ["optimize"]
 optimize = ["log/release_max_level_warn"]
-
-[patch.crates-io.egui_wgpu_backend]
-# git = "https://github.com/parasyte/egui_wgpu_backend.git"
-# rev = "75781ebd9ecd6264af502543650a8485fc2667ab"
-path = "../../other-projects/egui_wgpu_backend"
