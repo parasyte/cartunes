@@ -16,6 +16,7 @@ use winit::platform::windows::WindowExtWindows;
 use winit::window::Theme;
 
 mod config;
+mod ellipsis;
 mod framework;
 mod gpu;
 mod gui;
