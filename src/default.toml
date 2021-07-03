@@ -1,9 +1,64 @@
 [config]
-# This is the path to your documents directory with car tuning exports from the garage.
-tuning_path = ''
+# This is the path to your documents directory with car setup exports from the garage.
+setups_path = ''
 
 # You can disable open history by setting the size to 0.
 history_size = 10
 open_history = []
 
 [window]
+
+
+# Below are the track and car names that will be displayed in the UI and CSV exports. You can update
+# these settings to change the appearance, or add new ones without the need for an application
+# upgrade when new tracks and cars are added to iRacing.
+
+# These are the mappings for unique track identifiers to full names.
+[tracks]
+skidpad = "Centripetal Circuit"
+charlotte_2018 = "Charlotte Motor Speedway"
+concordhalf = "Concord Speedway"
+langley = "Langley Speedway"
+lanier = "Lanier National Speedway"
+oxford = "Oxford Plains Speedway"
+southboston = "South Boston Speedway"
+southernnational = "Southern Nation Motorsports Park"
+thompson = "Thompson Speedway Motorsports Park"
+lakeland = "USA International Speedway"
+charlotte = "[Legacy] Charlotte Motor Speedway - 2008"
+daytona = "[Legacy] Daytona Internal Speedway - 2008"
+phoenix = "[Legacy] Phoenix Raceway - 2008"
+watkinsglen = "Watkins Glen International"
+limerock_2019 = "Lime Rock Park"
+okayama = "Okayama International Raceway"
+oran = "Oran Park Raceway"
+oulton = "Oulton Park Circuit"
+summit = "Summit Point Raceway"
+tsukuba = "Tsukuba Circuit"
+lagunaseca = "WeatherTech Raceway at Laguna Seca"
+limerock = "[Legacy] Lime Rock Park - 2008"
+limaland = "Limaland Motorsports Park"
+
+# These are the mappings for unique car identifiers to full names.
+[cars]
+dirtstreetstock = "Dirt Street Stock"
+dirtumpmod = "Dirt UMP Modified"
+legends_ford34c = "Legends Ford '34 Coupe"
+legends_ford34c_rookie = "Legends Ford '34 Coupe - Rookie"
+legends_dirtford34c = "Dirt Legends Ford '34 Coupe"
+streetstock = "Street Stock"
+dallaradw12 = "[Legacy] Dallara DW12"
+trucks_silverado = "[Legacy] NASCAR Truck Chevrolet Silverado - 2008"
+cadillacctsvr = "Cadillac CTS-V Racecar"
+formulavee = "Formula Vee"
+mx5_mx52016 = "Global Mazda MX-5 Cup"
+kiaoptima = "Kia Optima"
+protrucks_pro2lite = "Lucas Oil Off Road Pro 2 Lite"
+solstice = "Pontiac Solstice"
+solstice_rookie = "Pontiac Solstice - Rookie"
+radical_sr8 = "Radical SR8"
+specracer = "SCCA Spec Racer Ford"
+rt2000 = "Skip Barber Formula 2000"
+vwbeetlegrc = "VW Beetle"
+vwbeetlegrc_lite = "VW Beetle - Lite"
+jettatdi = "VW Jetta TDI Cup"

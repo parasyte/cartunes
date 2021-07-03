@@ -3,6 +3,7 @@
 use crate::framework::{ConfigHandler, Framework, UserEvent};
 use crate::gpu::{Error as GpuError, Gpu};
 use crate::gui::Gui;
+use crate::setup::Setups;
 use log::error;
 use thiserror::Error;
 use winit::event::{Event, WindowEvent};
@@ -16,10 +17,11 @@ use winit::platform::windows::WindowExtWindows;
 use winit::window::Theme;
 
 mod config;
-mod ellipsis;
 mod framework;
 mod gpu;
 mod gui;
+mod setup;
+mod str_ext;
 
 /// Application error handling.
 #[derive(Debug, Error)]
@@ -63,8 +65,8 @@ fn create_window() -> Result<(EventLoop<UserEvent>, winit::window::Window, Gpu, 
         let theme = Theme::Dark;
 
         let (config, error) = Framework::unwrap_config(event_loop.create_proxy(), config);
-
-        let gui = Gui::new(config, event_loop.create_proxy(), error);
+        // TODO: Load all setup exports.
+        let gui = Gui::new(config, event_loop.create_proxy(), Setups::default(), error);
         let gpu = Gpu::new(&window, window_size)?;
         let framework = Framework::new(window_size, scale_factor, theme, gui, &gpu);
 
@@ -114,8 +116,8 @@ fn main() -> Result<(), Error> {
                 UserEvent::Exit => {
                     *control_flow = ControlFlow::Exit;
                 }
-                UserEvent::TuningPath(Some(tuning_path)) => {
-                    framework.update_tuning_path(tuning_path);
+                UserEvent::SetupPath(Some(setups_path)) => {
+                    framework.update_setups_path(setups_path);
                 }
                 _ => (),
             },

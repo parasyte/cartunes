@@ -1,4 +1,6 @@
 use directories::UserDirs;
+use patricia_tree::PatriciaSet;
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
@@ -8,12 +10,15 @@ use winit::dpi::{PhysicalPosition, PhysicalSize};
 /// Parsing and writing configurations can fail.
 #[derive(Debug, Error)]
 pub(crate) enum Error {
+    /// I/O error.
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
 
+    /// Configuration parse error.
     #[error("Configuration parse error: {0}")]
     Parse(#[from] TomlError),
 
+    /// Type error
     #[error("Expected {path:?} to be type {expected}")]
     Type { path: String, expected: String },
 }
@@ -30,11 +35,20 @@ pub(crate) struct Config {
     /// Original parsed TOML.
     doc: Document,
 
-    /// Tuning directory.
-    tuning_path: PathBuf,
+    /// Setup exports path.
+    setups_path: PathBuf,
 
     /// Window minimum inner size.
     min_size: PhysicalSize<u32>,
+
+    /// Map raw track IDs to unique track IDs (READ-ONLY).
+    pub(crate) track_ids: PatriciaSet,
+
+    /// Map track IDs to track names (READ-ONLY).
+    pub(crate) tracks: HashMap<String, String>,
+
+    /// Map car IDs to car names (READ-ONLY).
+    pub(crate) cars: HashMap<String, String>,
 }
 
 /// Window settings.
@@ -60,25 +74,29 @@ impl Config {
     /// Create a new Config.
     ///
     /// The path is allowed to be nonexistent. It will not be created until the TOML is written.
-    pub(crate) fn new<P: AsRef<Path>>(path: P, min_size: PhysicalSize<u32>) -> Self {
+    pub(crate) fn new<P: AsRef<Path>>(doc_path: P, min_size: PhysicalSize<u32>) -> Self {
         let mut config = Self {
-            doc_path: PathBuf::from(path.as_ref()),
+            doc_path: PathBuf::from(doc_path.as_ref()),
             doc: include_str!("default.toml").parse().unwrap(),
-            tuning_path: PathBuf::new(),
+            setups_path: PathBuf::new(),
             min_size,
+            track_ids: PatriciaSet::new(),
+            tracks: HashMap::new(),
+            cars: HashMap::new(),
         };
 
-        // Default tuning path is selected with the following precedence:
+        // Default setup exports path is selected with the following precedence:
         // 1. `$HOME/Documents/iRacing`
         // 2. `$HOME/iRacing`
         // 3. `iRacing`
         // This path may not exist and is _not_ created by this application.
-        let mut tuning_path = UserDirs::new().map_or_else(PathBuf::default, |dirs| {
+        let mut setups_path = UserDirs::new().map_or_else(PathBuf::default, |dirs| {
             PathBuf::from(dirs.document_dir().unwrap_or_else(|| dirs.home_dir()))
         });
-        tuning_path.push("iRacing");
+        setups_path.push("iRacing");
 
-        config.update_tuning_path(tuning_path);
+        config.update_setups_path(setups_path);
+        config.load_tracks_and_cars().unwrap();
 
         config
     }
@@ -98,18 +116,18 @@ impl Config {
 
         let doc: Document = fs::read_to_string(&doc_path)?.parse()?;
 
-        let tuning_path = PathBuf::from(
-            doc["config"]["tuning_path"]
+        let setups_path = PathBuf::from(
+            doc["config"]["setups_path"]
                 .as_str()
-                .ok_or_else(|| Error::type_error("config.tuning_path", "string"))?,
+                .ok_or_else(|| Error::type_error("config.setups_path", "string"))?,
         );
 
-        Ok(Some(Self {
-            doc_path,
-            doc,
-            tuning_path,
-            min_size,
-        }))
+        let mut config = Self::new(doc_path, min_size);
+        config.doc = doc;
+        config.update_setups_path(setups_path);
+        config.load_tracks_and_cars()?;
+
+        Ok(Some(config))
     }
 
     /// Create TOML file from this Config.
@@ -149,22 +167,48 @@ impl Config {
         self.doc["window"] = Window::from_winit(window).to_table();
     }
 
-    /// Return a reference to the tuning path.
-    pub(crate) fn get_tuning_path(&self) -> &Path {
-        &self.tuning_path
+    /// Return a reference to the setup exports path.
+    pub(crate) fn get_setups_path(&self) -> &Path {
+        &self.setups_path
     }
 
-    /// Update the tuning path.
-    pub(crate) fn update_tuning_path<P: AsRef<Path>>(&mut self, tuning_path: P) {
-        self.tuning_path = PathBuf::from(tuning_path.as_ref());
+    /// Update the setup exports path.
+    pub(crate) fn update_setups_path<P: AsRef<Path>>(&mut self, setups_path: P) {
+        self.setups_path = PathBuf::from(setups_path.as_ref());
 
         // Note that to_string_lossy() is destructive when the path contains invalid UTF-8 sequences.
         // If this is a problem in practice, we _could_ write unencodable paths as an array of
         // integers. It would allow reconstructing the path from TOML (which must be valid UTF-8)
         // even when the path cannot be encoded as valid UTF-8.
-        let tuning_path = self.tuning_path.as_path().to_string_lossy();
+        let setups_path = self.setups_path.as_path().to_string_lossy();
 
-        self.doc["config"]["tuning_path"] = value(tuning_path.as_ref());
+        self.doc["config"]["setups_path"] = value(setups_path.as_ref());
+    }
+
+    /// Load track and car info from config.
+    fn load_tracks_and_cars(&mut self) -> Result<(), Error> {
+        if let Some(tracks) = self.doc["tracks"].as_table() {
+            for (id, name) in tracks.iter() {
+                let name = name
+                    .as_str()
+                    .ok_or_else(|| Error::type_error(&format!("tracks.{}", id), "string"))?;
+
+                self.track_ids.insert(id.to_string());
+                self.tracks.insert(id.to_string(), name.to_string());
+            }
+        }
+
+        if let Some(cas) = self.doc["cars"].as_table() {
+            for (id, name) in cas.iter() {
+                let name = name
+                    .as_str()
+                    .ok_or_else(|| Error::type_error(&format!("cars.{}", id), "string"))?;
+
+                self.cars.insert(id.to_string(), name.to_string());
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -197,5 +241,46 @@ impl Window {
         output["height"] = value(self.size.height as i64);
 
         output
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Test default config file.
+    #[test]
+    fn test_default_config() {
+        let mut config = Config::new("/tmp/some/path.toml", PhysicalSize::new(100, 100));
+
+        assert!(config.load_tracks_and_cars().is_ok());
+
+        // Expect the PatriciaSet to have proper prefix matching.
+        let track_ids = &config.track_ids;
+        assert_eq!(
+            track_ids.get_longest_common_prefix("charlotte_2018_2019_roval"),
+            Some("charlotte_2018".as_bytes()),
+        );
+        assert_eq!(
+            track_ids.get_longest_common_prefix("charlotte_fullroadcoarse"),
+            Some("charlotte".as_bytes()),
+        );
+        assert_eq!(track_ids.get_longest_common_prefix("san_francisco"), None,);
+
+        // Expectations for track name mapping.
+        assert_eq!(
+            config.tracks.get("charlotte_2018"),
+            Some(&"Charlotte Motor Speedway".to_string())
+        );
+        assert_eq!(
+            config.tracks.get("charlotte"),
+            Some(&"[Legacy] Charlotte Motor Speedway - 2008".to_string())
+        );
+
+        // Expectations for car name mapping.
+        assert_eq!(
+            config.cars.get("rt2000"),
+            Some(&"Skip Barber Formula 2000".to_string())
+        )
     }
 }

@@ -1,6 +1,7 @@
 use crate::config::Config;
-use crate::ellipsis::Ellipsis;
 use crate::framework::UserEvent;
+use crate::setup::Setups;
+use crate::str_ext::Ellipsis;
 use copypasta::{ClipboardContext, ClipboardProvider};
 use egui::{CtxRef, Widget};
 use std::collections::{HashMap, VecDeque};
@@ -12,6 +13,8 @@ use winit::event_loop::EventLoopProxy;
 pub(crate) struct Gui {
     /// Application configuration.
     pub(crate) config: Config,
+
+    setups: Setups,
 
     /// An event loop proxy for sending user events.
     event_loop_proxy: EventLoopProxy<UserEvent>,
@@ -56,6 +59,7 @@ impl Gui {
     pub(crate) fn new(
         config: Config,
         event_loop_proxy: EventLoopProxy<UserEvent>,
+        setups: Setups,
         show_error: Option<ShowError>,
     ) -> Self {
         let mut show_errors = VecDeque::new();
@@ -66,6 +70,7 @@ impl Gui {
         Self {
             config,
             event_loop_proxy,
+            setups,
             about: false,
             preferences: false,
             show_errors,
@@ -145,10 +150,10 @@ impl Gui {
             .fixed_size((500.0, 200.0))
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    let tuning_path = self.config.get_tuning_path();
-                    let label = tuning_path.to_string_lossy().ellipsis(50);
+                    let setups_path = self.config.get_setups_path();
+                    let label = setups_path.to_string_lossy().ellipsis(50);
 
-                    ui.label("Tuning files location:");
+                    ui.label("Setup exports path:");
                     if egui::Label::new(label)
                         .code()
                         .sense(egui::Sense::click())
@@ -158,7 +163,7 @@ impl Gui {
                         let event_loop_proxy = self.event_loop_proxy.clone();
                         let f = rfd::AsyncFileDialog::new()
                             .set_parent(window)
-                            .set_directory(tuning_path)
+                            .set_directory(setups_path)
                             .pick_folder();
 
                         std::thread::spawn(move || {
@@ -166,7 +171,7 @@ impl Gui {
                                 .map(|selected| PathBuf::from(selected.path()));
 
                             event_loop_proxy
-                                .send_event(UserEvent::TuningPath(choice))
+                                .send_event(UserEvent::SetupPath(choice))
                                 .expect("Event loop must exist");
                         });
                     }

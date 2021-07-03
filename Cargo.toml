@@ -1,7 +1,7 @@
 [package]
 name = "cartunes"
 version = "0.1.0"
-description = "Simple tuning comparison app for iRacing."
+description = "Simple comparison app for iRacing car setups."
 authors = ["Jay Oster <jay@kodewerx.org>"]
 homepage = "https://github.com/parasyte/cartunes"
 repository = "https://github.com/parasyte/cartunes"
@@ -15,7 +15,9 @@ copypasta = "0.7"
 egui = { version = "0.13", default-features = false, features = ["single_threaded"] }
 egui_wgpu_backend = "0.10"
 directories = "3.0"
+kuchiki = "0.8"
 log = "0.4"
+patricia_tree = "0.3"
 pollster = "0.2"
 raw-window-handle = "0.3"
 rfd = "0.4"

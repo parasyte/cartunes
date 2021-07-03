@@ -41,7 +41,7 @@ pub(crate) enum UserEvent {
     /// User wants to exit without saving.
     Exit,
 
-    TuningPath(Option<PathBuf>),
+    SetupPath(Option<PathBuf>),
 }
 
 /// How the user wants to handle errors with reading the config file.
@@ -255,8 +255,8 @@ impl Framework {
         }
     }
 
-    pub(crate) fn update_tuning_path(&mut self, tuning_path: PathBuf) {
-        self.gui.config.update_tuning_path(tuning_path);
+    pub(crate) fn update_setups_path(&mut self, setups_path: PathBuf) {
+        self.gui.config.update_setups_path(setups_path);
     }
 
     /// Add an error message window to the GUI.
