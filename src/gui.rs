@@ -1,6 +1,6 @@
 //! User interface structure, rendering, and state management.
 
-use crate::config::Config;
+use crate::config::{Config, UserTheme};
 use crate::framework::UserEvent;
 use crate::setup::Setups;
 use crate::str_ext::Ellipsis;
@@ -152,6 +152,27 @@ impl Gui {
             .default_pos((150.0, 150.0))
             .fixed_size((500.0, 200.0))
             .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    let current_theme = *self.config.theme();
+
+                    ui.label("Theme:");
+                    egui::ComboBox::from_id_source("theme-preference")
+                        .selected_text(current_theme)
+                        .show_ui(ui, |ui| {
+                            let choices = [UserTheme::Auto, UserTheme::Dark, UserTheme::Light];
+                            for choice in &choices {
+                                let checked = current_theme == *choice;
+                                let response = ui.selectable_label(checked, format!("{}", choice));
+                                if response.clicked() {
+                                    self.config.update_theme(*choice);
+                                    self.event_loop_proxy
+                                        .send_event(UserEvent::Theme(*choice))
+                                        .expect("Event loop must exist");
+                                }
+                            }
+                        });
+                });
+
                 ui.horizontal(|ui| {
                     let setups_path = self.config.get_setups_path();
                     let label = setups_path.to_string_lossy().ellipsis(50);

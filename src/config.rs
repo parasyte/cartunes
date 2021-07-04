@@ -8,6 +8,10 @@ use std::path::{Path, PathBuf};
 use thiserror::Error;
 use toml_edit::{table, value, Document, Item, TomlError};
 use winit::dpi::{PhysicalPosition, PhysicalSize};
+use winit::window::Theme;
+
+#[cfg(target_os = "windows")]
+use winit::platform::windows::WindowExtWindows;
 
 /// Parsing and writing configurations can fail.
 #[derive(Debug, Error)]
@@ -43,6 +47,9 @@ pub(crate) struct Config {
     /// Window minimum inner size.
     min_size: PhysicalSize<u32>,
 
+    /// User's theme choice.
+    theme: UserTheme,
+
     /// Map raw track IDs to unique track IDs (READ-ONLY).
     pub(crate) track_ids: PatriciaSet,
 
@@ -60,6 +67,19 @@ pub(crate) struct Window {
 
     /// Window inner size.
     pub(crate) size: PhysicalSize<u32>,
+}
+
+/// User's theme choice.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub(crate) enum UserTheme {
+    /// Auto-select based on OS preferences (with fallback to dark mode).
+    Auto,
+
+    /// Dark mode.
+    Dark,
+
+    /// Light mode.
+    Light,
 }
 
 impl Error {
@@ -82,6 +102,7 @@ impl Config {
             doc: include_str!("default.toml").parse().unwrap(),
             setups_path: PathBuf::new(),
             min_size,
+            theme: UserTheme::Auto,
             track_ids: PatriciaSet::new(),
             tracks: HashMap::new(),
             cars: HashMap::new(),
@@ -124,8 +145,11 @@ impl Config {
                 .ok_or_else(|| Error::type_error("config.setups_path", "string"))?,
         );
 
+        let theme = UserTheme::from_item(&doc["config"]["theme"]);
+
         let mut config = Self::new(doc_path, min_size);
         config.doc = doc;
+        config.theme = theme;
         config.update_setups_path(setups_path);
         config.load_tracks_and_cars()?;
 
@@ -169,7 +193,7 @@ impl Config {
         self.doc["window"] = Window::from_winit(window).to_table();
     }
 
-    /// Return a reference to the setup exports path.
+    /// Get a reference to the setup exports path.
     pub(crate) fn get_setups_path(&self) -> &Path {
         &self.setups_path
     }
@@ -187,6 +211,17 @@ impl Config {
         self.doc["config"]["setups_path"] = value(setups_path.as_ref());
     }
 
+    /// Get a reference to the theme preference.
+    pub(crate) fn theme(&self) -> &UserTheme {
+        &self.theme
+    }
+
+    /// Update the theme preference.
+    pub(crate) fn update_theme(&mut self, theme: UserTheme) {
+        self.theme = theme;
+        self.doc["config"]["theme"] = value(theme.as_str());
+    }
+
     /// Load track and car info from config.
     fn load_tracks_and_cars(&mut self) -> Result<(), Error> {
         if let Some(tracks) = self.doc["tracks"].as_table() {
@@ -200,8 +235,8 @@ impl Config {
             }
         }
 
-        if let Some(cas) = self.doc["cars"].as_table() {
-            for (id, name) in cas.iter() {
+        if let Some(cars) = self.doc["cars"].as_table() {
+            for (id, name) in cars.iter() {
                 let name = name
                     .as_str()
                     .ok_or_else(|| Error::type_error(&format!("cars.{}", id), "string"))?;
@@ -243,6 +278,59 @@ impl Window {
         output["height"] = value(self.size.height as i64);
 
         output
+    }
+}
+
+impl UserTheme {
+    /// Create a `UserTheme` from a TOML item.
+    fn from_item(value: &Item) -> Self {
+        value
+            .as_str()
+            .map(|value| match value {
+                "dark" => Self::Dark,
+                "light" => Self::Light,
+                _ => Self::Auto,
+            })
+            .unwrap_or(Self::Auto)
+    }
+
+    /// Get a string slice that is TOML-compatible for this `UserTheme`.
+    fn as_str(&self) -> &str {
+        match self {
+            Self::Auto => "auto",
+            Self::Dark => "dark",
+            Self::Light => "light",
+        }
+    }
+
+    /// Create a [`winit::window::Theme`] from this `UserTheme`.
+    ///
+    /// When the `UserTheme` value is set to `Auto`, the `window` reference will be used to select
+    /// the theme based on OS preferences.
+    pub(crate) fn as_winit_theme(&self, window: &winit::window::Window) -> Theme {
+        match self {
+            Self::Auto => {
+                #[cfg(target_os = "windows")]
+                let theme = window.theme();
+                #[cfg(not(target_os = "windows"))]
+                let theme = Theme::Dark;
+
+                theme
+            }
+            Self::Dark => winit::window::Theme::Dark,
+            Self::Light => winit::window::Theme::Light,
+        }
+    }
+}
+
+impl std::fmt::Display for UserTheme {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let text = match self {
+            Self::Auto => "Automatic",
+            Self::Dark => "Dark Mode",
+            Self::Light => "Light Mode",
+        };
+        write!(f, "{}", text)
     }
 }
 

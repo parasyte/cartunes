@@ -1,6 +1,6 @@
 //! Platform-neutral framework for processing events and handling app configuration.
 
-use crate::config::{Config, Error as ConfigError};
+use crate::config::{Config, Error as ConfigError, UserTheme};
 use crate::gpu::Gpu;
 use crate::gui::{ErrorButton, Gui, ShowError};
 use directories::ProjectDirs;
@@ -43,7 +43,11 @@ pub(crate) enum UserEvent {
     /// User wants to exit without saving.
     Exit,
 
+    /// Change the path for setup export files.
     SetupPath(Option<PathBuf>),
+
+    /// Change the theme preference.
+    Theme(UserTheme),
 }
 
 /// How the user wants to handle errors with reading the config file.
@@ -159,8 +163,12 @@ impl Framework {
     }
 
     /// Call this when the system theme changes.
-    pub(crate) fn change_theme(&mut self, theme: Theme) {
-        self.theme = Some(theme);
+    ///
+    /// `force` will ignore the user's configuration preference.
+    pub(crate) fn change_theme(&mut self, theme: Theme, force: bool) {
+        if force || self.gui.config.theme() == &UserTheme::Auto {
+            self.theme = Some(theme);
+        }
     }
 
     /// Get the minimum size allowed for the window.

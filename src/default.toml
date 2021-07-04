@@ -2,6 +2,9 @@
 # This is the path to your documents directory with car setup exports from the garage.
 setups_path = ''
 
+# Acceptable theme values are "dark", "light", and "auto".
+theme = "auto"
+
 # You can disable open history by setting the size to 0.
 history_size = 10
 open_history = []

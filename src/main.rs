@@ -1,8 +1,8 @@
-//! # Cartunes
+//! # CarTunes
 //!
 //! Simple comparison app for iRacing car setups.
 //!
-//! Cartunes is written in Rust and aims to be platform neutral. It runs on Windows, macOS, and
+//! CarTunes is written in Rust and aims to be platform neutral. It runs on Windows, macOS, and
 //! Linux. The application provides a basic "spreadsheet"-like layout to help make comparisons easy
 //! between car setup exports from [iRacing](https://www.iracing.com/). CSV export is available for
 //! more advanced data processing needs.
@@ -23,11 +23,6 @@ use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::WindowBuilder;
 use winit_input_helper::WinitInputHelper;
-
-#[cfg(target_os = "windows")]
-use winit::platform::windows::WindowExtWindows;
-#[cfg(not(target_os = "windows"))]
-use winit::window::Theme;
 
 mod config;
 mod framework;
@@ -72,12 +67,8 @@ fn create_window() -> Result<(EventLoop<UserEvent>, winit::window::Window, Gpu, 
         let window_size = window.inner_size();
         let scale_factor = window.scale_factor();
 
-        #[cfg(target_os = "windows")]
-        let theme = window.theme();
-        #[cfg(not(target_os = "windows"))]
-        let theme = Theme::Dark;
-
         let (config, error) = Framework::unwrap_config(event_loop.create_proxy(), config);
+        let theme = config.theme().as_winit_theme(&window);
         // TODO: Load all setup exports.
         let gui = Gui::new(config, event_loop.create_proxy(), Setups::default(), error);
         let gpu = Gpu::new(&window, window_size)?;
@@ -132,11 +123,16 @@ fn main() -> Result<(), Error> {
                 UserEvent::SetupPath(Some(setups_path)) => {
                     framework.update_setups_path(setups_path);
                 }
+                UserEvent::Theme(theme) => {
+                    let theme = theme.as_winit_theme(&window);
+                    framework.change_theme(theme, true);
+                    window.request_redraw();
+                }
                 _ => (),
             },
             Event::WindowEvent { event, .. } => match event {
                 WindowEvent::ThemeChanged(theme) => {
-                    framework.change_theme(theme);
+                    framework.change_theme(theme, false);
                     window.request_redraw();
                 }
                 WindowEvent::CloseRequested => {
