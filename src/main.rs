@@ -1,3 +1,16 @@
+//! # Cartunes
+//!
+//! Simple comparison app for iRacing car setups.
+//!
+//! Cartunes is written in Rust and aims to be platform neutral. It runs on Windows, macOS, and
+//! Linux. The application provides a basic "spreadsheet"-like layout to help make comparisons easy
+//! between car setup exports from [iRacing](https://www.iracing.com/). CSV export is available for
+//! more advanced data processing needs.
+//!
+//! The GUI is unique because it is 100% rendered on the GPU using Vulkan (on Windows and Linux) and
+//! the Metal graphics API on macOS. Dark mode and light mode OS themes are both included, although
+//! automatic theme switching
+//! [may not work on all platforms](https://github.com/rust-windowing/winit/issues/1549).
 #![deny(clippy::all)]
 
 use crate::framework::{ConfigHandler, Framework, UserEvent};

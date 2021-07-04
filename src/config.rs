@@ -1,3 +1,5 @@
+//! Application configuration parsing and validation.
+
 use directories::UserDirs;
 use patricia_tree::PatriciaSet;
 use std::collections::HashMap;

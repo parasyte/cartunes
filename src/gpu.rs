@@ -1,3 +1,5 @@
+//! Platform-neutral GPU state management and rendering.
+
 use raw_window_handle::HasRawWindowHandle;
 use thiserror::Error;
 

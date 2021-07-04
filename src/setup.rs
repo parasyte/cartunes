@@ -1,3 +1,5 @@
+//! Parsers and internal representations for iRacing setup exports.
+
 use crate::config::Config;
 use crate::str_ext::Capitalize;
 use kuchiki::traits::TendrilSink;
@@ -27,11 +29,76 @@ pub(crate) enum Error {
 }
 
 /// Internal representation of a setup export.
+///
+/// The structure is a tree that can be described with this ASCII pictograph.
+///
+/// ```text
+/// [Setups]
+/// ├── "Concord Speedway"
+/// │   ├── "VW Beetle"
+/// │   │   └── [Setup 1]
+/// │   └── "Skip Barber Formula 2000"
+/// │       ├── [Setup 1]
+/// │       ├── [Setup 2]
+/// │       └── [Setup 3]
+/// └── "Okayama International Raceway"
+///     └── "VW Beetle"
+///         ├── [Setup 1]
+///         └── [Setup 2]
+/// ```
+///
+/// The first layer of depth contains track names (human-readable), meaning that setups are sorted
+/// first by the track they were exported from.
+///
+/// At the second layer of depth are the car names (human readable). Setups are also sorted by the
+/// cars there were exported for.
+///
+/// Finally at the third level, each car has a list of `Setup` maps. Each car can have as many
+/// setups as needed.
+///
+/// The `Setup` type is similarly an alias for a deeply nested `HashMap` representing a single
+/// instance of a car setup.
+///
+/// ```text
+/// [Setup]
+/// ├── "Front"
+/// │   └── "Brake bias"
+/// │       └── "54%"
+/// ├── "Left Front"
+/// │   ├── "Cold pressure"
+/// │   │   └── "25.0 psi"
+/// │   ├── "Last temps O M I"
+/// │   │   ├── "119F"
+/// │   │   ├── "119F"
+/// │   │   └── "119F"
+/// │   └── "Tread remaining"
+/// │       ├── "100%"
+/// │       ├── "100%"
+/// │       └── "100%"
+/// └── "Rear"
+///     └── "Fuel level"
+///         └── "4.2 gal"
+/// ```
+///
+/// The first layer of depth in each `Setup` contains the property groups. These groups typically
+/// reference general zones of the vehicle, such as "Front" and "Right Rear". Each car has unique
+/// property group names defined in the setup export.
+///
+/// Under each property group is a list of property names. Each car has unique property names
+/// defined in the setup export.
+///
+/// At the lowest layer, the leaf nodes contain a list of property values. A property with a single
+/// value is still technically a list with a single element. Multiple values are used in cases where
+/// the setup export describes things like tire temperature, which measures the <u>O</u>uter,
+/// <u>M</u>iddle, and <u>I</u>nner temperatures across the tread respectively.
+///
+/// See the [iRacing User Manuals](https://www.iracing.com/user-manuals/) for technical details of
+/// individual setup properties for each car.
 #[derive(Default)]
 pub(crate) struct Setups(Tracks);
 
 type Tracks = HashMap<String, Cars>;
-type Cars = HashMap<String, Setup>;
+type Cars = HashMap<String, Vec<Setup>>;
 type Setup = HashMap<String, Props>;
 type Props = HashMap<String, Vec<String>>;
 
@@ -43,6 +110,7 @@ fn setup_from_html<P: AsRef<Path>>(
     let html = fs::read_to_string(path)?;
     let document = kuchiki::parse_html().one(html.as_str());
 
+    // Find the document header and gather its text contents
     let text = document
         .select(r#"h2[align="center"]"#)
         .unwrap()
@@ -52,7 +120,7 @@ fn setup_from_html<P: AsRef<Path>>(
 
     let mut lines = text.lines().skip(1);
 
-    // Get car name
+    // Get the car unique identifier
     let car_id = lines
         .next()
         .ok_or(Error::MissingCar)?
@@ -61,12 +129,14 @@ fn setup_from_html<P: AsRef<Path>>(
         .next()
         .ok_or(Error::MissingCar)?
         .replace(" ", "_");
+
+    // Map car ID to a human-readable name
     let car_name = config
         .cars
         .get(&car_id)
         .map_or(car_id, |name| name.to_string());
 
-    // Get track name
+    // Get the track ambiguous identifier
     let track_id = lines
         .next()
         .ok_or(Error::MissingTrack)?
@@ -75,19 +145,21 @@ fn setup_from_html<P: AsRef<Path>>(
         .1
         .trim()
         .replace(" ", "_");
+
+    // Get the track unique identifier
     let track_id = config
         .track_ids
         .get_longest_common_prefix(&track_id)
-        .unwrap(); // XXX
+        .unwrap_or_else(|| track_id.as_bytes());
     let track_id = String::from_utf8_lossy(track_id).to_string();
+
+    // Map track ID to a human-readable name
     let track_name = config
         .tracks
         .get(&track_id)
         .map_or(track_id, |name| name.to_string());
 
-    let mut setup = HashMap::new();
-
-    // Get all group names
+    // Get all property groups
     let groups = document
         .select(r#"h2:not([align="center"])"#)
         .unwrap()
@@ -96,21 +168,24 @@ fn setup_from_html<P: AsRef<Path>>(
             !text.starts_with("notes") && !text.starts_with("driver aids")
         });
 
+    // Populate the Setup
+    let mut setup = Setup::default();
     for group in groups {
         let mut group_name = group.text_contents().capitalize_words().to_string();
         group_name.retain(|ch| ch != ':');
-        let props = setup.entry(group_name).or_default();
 
-        consume_properties(props, group.as_node().next_sibling());
+        setup.insert(group_name, get_properties(group.as_node().next_sibling()));
     }
 
     Ok((track_name, car_name, setup))
 }
 
-fn consume_properties(map: &mut Props, mut node_ref: Option<kuchiki::NodeRef>) {
+fn get_properties(mut node_ref: Option<kuchiki::NodeRef>) -> Props {
     let mut last_was_br = false;
+    let mut map = Props::default();
     let mut name = String::new();
     let mut values = Vec::new();
+
     while let Some(ref node) = node_ref {
         if let Some(element) = node.as_element() {
             // The node is an element
@@ -147,6 +222,8 @@ fn consume_properties(map: &mut Props, mut node_ref: Option<kuchiki::NodeRef>) {
     if !name.is_empty() && !values.is_empty() {
         map.insert(name, values);
     }
+
+    map
 }
 
 #[cfg(test)]

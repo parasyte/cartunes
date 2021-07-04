@@ -1,3 +1,5 @@
+//! String extension traits.
+
 use std::borrow::Cow;
 use unicode_segmentation::UnicodeSegmentation;
 

@@ -1,3 +1,5 @@
+//! Platform-neutral framework for processing events and handling app configuration.
+
 use crate::config::{Config, Error as ConfigError};
 use crate::gpu::Gpu;
 use crate::gui::{ErrorButton, Gui, ShowError};
@@ -182,8 +184,8 @@ impl Framework {
     /// This is an associated function because there will be no window or GUI available when loading
     /// the config.
     ///
-    /// Always returns a valid config, and may optionally return a [`gui::ShowError`] for the GUI to
-    /// display an error message to the user.
+    /// Always returns a valid config, and may optionally return a [`crate::gui::ShowError`] for the
+    /// GUI to display an error message to the user.
     ///
     /// The `keep_config` is a user choice that will be set to [`ConfigHandler::Keep`] when an error
     /// is unwrapped, and may at some time in the future be changed to a [`ConfigHandler::Replace`]

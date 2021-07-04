@@ -1,3 +1,5 @@
+//! User interface structure, rendering, and state management.
+
 use crate::config::Config;
 use crate::framework::UserEvent;
 use crate::setup::Setups;
@@ -14,6 +16,7 @@ pub(crate) struct Gui {
     /// Application configuration.
     pub(crate) config: Config,
 
+    /// A tree of `Setups` containing all known setup exports.
     setups: Setups,
 
     /// An event loop proxy for sending user events.
@@ -47,7 +50,7 @@ pub(crate) struct ShowError {
 
 /// Descriptor for a button used by the error window.
 pub(crate) struct ErrorButton {
-    /// Text to show on the button/
+    /// Text to show on the button.
     label: String,
 
     /// An action to perform when the button is pressed.
