@@ -188,6 +188,7 @@ dependencies = [
  "thiserror",
  "toml_edit",
  "unicode-segmentation",
+ "walkdir",
  "wgpu",
  "winit",
  "winit_input_helper",

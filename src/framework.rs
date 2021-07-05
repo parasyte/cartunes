@@ -8,6 +8,7 @@ use egui::ClippedMesh;
 use egui_wgpu_backend::{RenderPass, ScreenDescriptor};
 use egui_winit_platform::{Platform, PlatformDescriptor};
 use std::borrow::Cow;
+use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::time::Instant;
 use thiserror::Error;
@@ -192,19 +193,16 @@ impl Framework {
     /// This is an associated function because there will be no window or GUI available when loading
     /// the config.
     ///
-    /// Always returns a valid config, and may optionally return a [`crate::gui::ShowError`] for the
+    /// Always returns a valid config, and may optionally add a [`crate::gui::ShowError`] for the
     /// GUI to display an error message to the user.
-    ///
-    /// The `keep_config` is a user choice that will be set to [`ConfigHandler::Keep`] when an error
-    /// is unwrapped, and may at some time in the future be changed to a [`ConfigHandler::Replace`]
-    /// when the user makes a decision.
     pub(crate) fn unwrap_config(
+        show_errors: &mut VecDeque<ShowError>,
         event_loop_proxy: EventLoopProxy<UserEvent>,
         config: Result<Option<Config>, Error>,
-    ) -> (Config, Option<ShowError>) {
+    ) -> Config {
         match config {
-            Ok(Some(config)) => (config, None),
-            Ok(None) => (Config::new(config_path(), Self::min_size()), None),
+            Ok(Some(config)) => config,
+            Ok(None) => Config::new(config_path(), Self::min_size()),
             Err(err) => {
                 // Default to keep when there is an error
                 event_loop_proxy
@@ -224,8 +222,9 @@ impl Framework {
                         }),
                     ),
                 );
+                show_errors.push_back(err);
 
-                (Config::new(config_path(), Self::min_size()), Some(err))
+                Config::new(config_path(), Self::min_size())
             }
         }
     }
@@ -233,8 +232,7 @@ impl Framework {
     /// Try to save the configuration with the current window geometry.
     ///
     /// Returns true on success. When saving fails, the error is shown to the user and `false` is
-    /// returned. At some time in the future, `exiting` will be set to `Exiting::Yes` if the user
-    /// requests to exit anyway.
+    /// returned.
     pub(crate) fn save_config(
         &mut self,
         event_loop_proxy: EventLoopProxy<UserEvent>,
@@ -265,6 +263,7 @@ impl Framework {
         }
     }
 
+    /// Update the setups path on the config.
     pub(crate) fn update_setups_path(&mut self, setups_path: PathBuf) {
         self.gui.config.update_setups_path(setups_path);
     }

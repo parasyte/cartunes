@@ -61,19 +61,14 @@ impl Gui {
     /// Create a GUI.
     pub(crate) fn new(
         config: Config,
-        event_loop_proxy: EventLoopProxy<UserEvent>,
         setups: Setups,
-        show_error: Option<ShowError>,
+        event_loop_proxy: EventLoopProxy<UserEvent>,
+        show_errors: VecDeque<ShowError>,
     ) -> Self {
-        let mut show_errors = VecDeque::new();
-        if let Some(err) = show_error {
-            show_errors.push_front(err);
-        }
-
         Self {
             config,
-            event_loop_proxy,
             setups,
+            event_loop_proxy,
             about: false,
             preferences: false,
             show_errors,

@@ -8,9 +8,11 @@ pub(crate) enum Error {
     /// No suitable [`wgpu::Adapter`] found
     #[error("No suitable `wgpu::Adapter` found.")]
     AdapterNotFound,
+
     /// Equivalent to [`wgpu::RequestDeviceError`]
     #[error("No wgpu::Device found.")]
     DeviceNotFound(wgpu::RequestDeviceError),
+
     /// Equivalent to [`wgpu::SwapChainError`]
     #[error("The GPU failed to acquire a swapchain frame.")]
     Swapchain(wgpu::SwapChainError),

@@ -18,6 +18,7 @@ use crate::gpu::{Error as GpuError, Gpu};
 use crate::gui::Gui;
 use crate::setup::Setups;
 use log::error;
+use std::collections::VecDeque;
 use thiserror::Error;
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
@@ -67,10 +68,11 @@ fn create_window() -> Result<(EventLoop<UserEvent>, winit::window::Window, Gpu, 
         let window_size = window.inner_size();
         let scale_factor = window.scale_factor();
 
-        let (config, error) = Framework::unwrap_config(event_loop.create_proxy(), config);
+        let mut errors = VecDeque::new();
+        let config = Framework::unwrap_config(&mut errors, event_loop.create_proxy(), config);
+        let setups = Setups::new(&config);
         let theme = config.theme().as_winit_theme(&window);
-        // TODO: Load all setup exports.
-        let gui = Gui::new(config, event_loop.create_proxy(), Setups::default(), error);
+        let gui = Gui::new(config, setups, event_loop.create_proxy(), errors);
         let gpu = Gpu::new(&window, window_size)?;
         let framework = Framework::new(window_size, scale_factor, theme, gui, &gpu);
 

@@ -5,15 +5,16 @@ use crate::str_ext::Capitalize;
 use kuchiki::traits::TendrilSink;
 use std::collections::HashMap;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use thiserror::Error;
+use walkdir::{DirEntry, WalkDir};
 
 // Parsing setup exports can fail.
 #[derive(Debug, Error)]
 pub(crate) enum Error {
     /// I/O error while reading export.
-    #[error("I/O Error: {0}")]
-    Io(#[from] std::io::Error),
+    #[error("I/O Error while reading {0:?}: {1}")]
+    Io(PathBuf, #[source] std::io::Error),
 
     /// Export is missing a page header.
     #[error("Missing page header")]
@@ -28,6 +29,13 @@ pub(crate) enum Error {
     MissingTrack,
 }
 
+impl Error {
+    /// Shortcut to create an I/O Error.
+    fn io<P: AsRef<Path>>(path: P, err: std::io::Error) -> Self {
+        Self::Io(path.as_ref().to_path_buf(), err)
+    }
+}
+
 /// Internal representation of a setup export.
 ///
 /// The structure is a tree that can be described with this ASCII pictograph.
@@ -36,15 +44,15 @@ pub(crate) enum Error {
 /// [Setups]
 /// ├── "Concord Speedway"
 /// │   ├── "VW Beetle"
-/// │   │   └── [Setup 1]
+/// │   │   └── (Path, [Setup 1])
 /// │   └── "Skip Barber Formula 2000"
-/// │       ├── [Setup 1]
-/// │       ├── [Setup 2]
-/// │       └── [Setup 3]
+/// │       ├── (Path, [Setup 1])
+/// │       ├── (Path, [Setup 2])
+/// │       └── (Path, [Setup 3])
 /// └── "Okayama International Raceway"
 ///     └── "VW Beetle"
-///         ├── [Setup 1]
-///         └── [Setup 2]
+///         ├── (Path, [Setup 1])
+///         └── (Path, [Setup 2])
 /// ```
 ///
 /// The first layer of depth contains track names (human-readable), meaning that setups are sorted
@@ -53,8 +61,8 @@ pub(crate) enum Error {
 /// At the second layer of depth are the car names (human readable). Setups are also sorted by the
 /// cars there were exported for.
 ///
-/// Finally at the third level, each car has a list of `Setup` maps. Each car can have as many
-/// setups as needed.
+/// Finally at the third level, each car has a list of `Setup` trees along with the file path that
+/// it was loaded from. Each car can have as many setups as needed.
 ///
 /// The `Setup` type is similarly an alias for a deeply nested `HashMap` representing a single
 /// instance of a car setup.
@@ -94,20 +102,65 @@ pub(crate) enum Error {
 ///
 /// See the [iRacing User Manuals](https://www.iracing.com/user-manuals/) for technical details of
 /// individual setup properties for each car.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub(crate) struct Setups(Tracks);
 
 type Tracks = HashMap<String, Cars>;
-type Cars = HashMap<String, Vec<Setup>>;
+type Cars = HashMap<String, Vec<(PathBuf, Setup)>>;
 type Setup = HashMap<String, Props>;
 type Props = HashMap<String, Vec<String>>;
+
+impl Setups {
+    /// Recursively load all HTML files from the config setup exports path into a `Setups` tree.
+    pub(crate) fn new(config: &Config) -> Self {
+        // Check if a directory entry is an HTML file.
+        fn is_html(entry: &DirEntry) -> bool {
+            entry
+                .file_name()
+                .to_str()
+                .map(|s| s.ends_with(".htm") || s.ends_with(".html"))
+                .unwrap_or(false)
+        }
+
+        let mut setups = Self::default();
+        let path = config.get_setups_path();
+        let walker = WalkDir::new(path)
+            .into_iter()
+            .filter_entry(|entry| entry.file_type().is_dir() || is_html(entry))
+            .filter_map(|entry| entry.ok());
+
+        for entry in walker {
+            if entry.file_type().is_file() {
+                setups.load_file(entry.path(), config).ok();
+            }
+        }
+
+        setups
+    }
+
+    /// Get a reference to the tracks tree.
+    pub(crate) fn tracks(&self) -> &Tracks {
+        &self.0
+    }
+
+    /// Load an HTML export file into the `Setups` tree.
+    fn load_file<P: AsRef<Path>>(&mut self, path: P, config: &Config) -> Result<(), Error> {
+        let (track_name, car_name, setup) = setup_from_html(&path, config)?;
+
+        let cars = self.0.entry(track_name).or_default();
+        let setups = cars.entry(car_name).or_default();
+        setups.push((path.as_ref().to_path_buf(), setup));
+
+        Ok(())
+    }
+}
 
 /// Parse an HTML file into a `Setup`.
 fn setup_from_html<P: AsRef<Path>>(
     path: P,
     config: &Config,
 ) -> Result<(String, String, Setup), Error> {
-    let html = fs::read_to_string(path)?;
+    let html = fs::read_to_string(&path).map_err(|err| Error::io(path, err))?;
     let document = kuchiki::parse_html().one(html.as_str());
 
     // Find the document header and gather its text contents
@@ -445,5 +498,26 @@ mod tests {
             front.get("Anti-roll bar").unwrap(),
             &vec!["Unhooked".to_string()]
         );
+    }
+
+    #[test]
+    fn test_load_dir() {
+        let mut config = Config::new("/tmp/some/path.toml", PhysicalSize::new(0, 0));
+        config.update_setups_path("./fixtures");
+        let setups = Setups::new(&config);
+
+        assert!(setups
+            .0
+            .get("Charlotte Motor Speedway")
+            .unwrap()
+            .get("Global Mazda MX-5 Cup")
+            .is_some());
+
+        assert!(setups
+            .0
+            .get("Centripetal Circuit")
+            .unwrap()
+            .get("Skip Barber Formula 2000")
+            .is_some());
     }
 }
