@@ -72,7 +72,7 @@ impl Framework {
     ) -> Self {
         let width = size.width;
         let height = size.height;
-        let font_definitions = create_fonts();
+        let font_definitions = create_fonts(theme);
         let style = create_style(theme);
         let platform = Platform::new(PlatformDescriptor {
             physical_width: width,
@@ -310,7 +310,7 @@ fn config_path() -> PathBuf {
 }
 
 /// Create fonts for egui from the embedded TTFs.
-fn create_fonts() -> egui::FontDefinitions {
+fn create_fonts(theme: Theme) -> egui::FontDefinitions {
     let mut fonts = egui::FontDefinitions::default();
 
     // Add font data
@@ -336,7 +336,10 @@ fn create_fonts() -> egui::FontDefinitions {
         .fonts_for_family
         .get_mut(&egui::FontFamily::Proportional)
     {
-        font.push("Ubuntu-Regular".to_owned());
+        font.push(match theme {
+            Theme::Dark => "Ubuntu-Light".to_owned(),
+            Theme::Light => "Ubuntu-Regular".to_owned(),
+        });
     }
 
     if let Some(mut heading) = fonts.family_and_size.get_mut(&egui::TextStyle::Heading) {
