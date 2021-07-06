@@ -293,10 +293,12 @@ mod tests {
 
         assert_eq!(track_name, "Centripetal Circuit".to_string());
         assert_eq!(car_name, "Skip Barber Formula 2000".to_string());
+        assert_eq!(setup.len(), 6);
 
         // Front
         let front = setup.get("Front").unwrap();
         assert_eq!(front.get("Brake bias").unwrap(), &vec!["54%".to_string()]);
+        assert_eq!(front.len(), 1);
 
         // Left Front
         let expected = [
@@ -317,6 +319,7 @@ mod tests {
 
             assert_eq!(actual, &expected);
         }
+        assert_eq!(left_front.len(), 9);
 
         // Left Rear
         let expected = [
@@ -335,6 +338,7 @@ mod tests {
 
             assert_eq!(actual, &expected);
         }
+        assert_eq!(left_rear.len(), 7);
 
         // Right Front
         let expected = [
@@ -348,13 +352,14 @@ mod tests {
             ("Camber", vec!["-1.6 deg"]),
             ("Caster", vec!["+12.2 deg"]),
         ];
-        let left_front = setup.get("Right Front").unwrap();
+        let right_front = setup.get("Right Front").unwrap();
         for expected in &expected {
-            let actual = left_front.get(expected.0).unwrap();
+            let actual = right_front.get(expected.0).unwrap();
             let expected: Vec<_> = expected.1.iter().map(|s| s.to_string()).collect();
 
             assert_eq!(actual, &expected);
         }
+        assert_eq!(right_front.len(), 9);
 
         // Right Rear
         let expected = [
@@ -366,21 +371,23 @@ mod tests {
             ("Ride height", vec!["3.20 in"]),
             ("Camber", vec!["-2.1 deg"]),
         ];
-        let left_rear = setup.get("Right Rear").unwrap();
+        let right_rear = setup.get("Right Rear").unwrap();
         for expected in &expected {
-            let actual = left_rear.get(expected.0).unwrap();
+            let actual = right_rear.get(expected.0).unwrap();
             let expected: Vec<_> = expected.1.iter().map(|s| s.to_string()).collect();
 
             assert_eq!(actual, &expected);
         }
+        assert_eq!(right_rear.len(), 7);
 
         // Rear
-        let front = setup.get("Rear").unwrap();
+        let rear = setup.get("Rear").unwrap();
         assert_eq!(
-            front.get("Fuel level").unwrap(),
+            rear.get("Fuel level").unwrap(),
             &vec!["4.2 gal".to_string()]
         );
-        assert_eq!(front.get("Anti-roll bar").unwrap(), &vec!["6".to_string()]);
+        assert_eq!(rear.get("Anti-roll bar").unwrap(), &vec!["6".to_string()]);
+        assert_eq!(rear.len(), 2);
     }
 
     #[test]
@@ -391,6 +398,7 @@ mod tests {
 
         assert_eq!(track_name, "Charlotte Motor Speedway".to_string());
         assert_eq!(car_name, "Global Mazda MX-5 Cup".to_string());
+        assert_eq!(setup.len(), 6);
 
         // Front
         let front = setup.get("Front").unwrap();
@@ -403,6 +411,7 @@ mod tests {
             front.get("Anti-roll bar").unwrap(),
             &vec!["Firm".to_string()]
         );
+        assert_eq!(front.len(), 3);
 
         // Left Front
         let expected = [
@@ -424,6 +433,7 @@ mod tests {
 
             assert_eq!(actual, &expected);
         }
+        assert_eq!(left_front.len(), 10);
 
         // Left Rear
         let expected = [
@@ -445,6 +455,7 @@ mod tests {
 
             assert_eq!(actual, &expected);
         }
+        assert_eq!(left_rear.len(), 10);
 
         // Right Front
         let expected = [
@@ -459,13 +470,14 @@ mod tests {
             ("Rebound stiffness", vec!["+8 clicks"]),
             ("Camber", vec!["-2.7 deg"]),
         ];
-        let left_front = setup.get("Right Front").unwrap();
+        let right_front = setup.get("Right Front").unwrap();
         for expected in &expected {
-            let actual = left_front.get(expected.0).unwrap();
+            let actual = right_front.get(expected.0).unwrap();
             let expected: Vec<_> = expected.1.iter().map(|s| s.to_string()).collect();
 
             assert_eq!(actual, &expected);
         }
+        assert_eq!(right_front.len(), 10);
 
         // Right Rear
         let expected = [
@@ -480,25 +492,27 @@ mod tests {
             ("Rebound stiffness", vec!["+10 clicks"]),
             ("Camber", vec!["-2.7 deg"]),
         ];
-        let left_rear = setup.get("Right Rear").unwrap();
+        let right_rear = setup.get("Right Rear").unwrap();
         for expected in &expected {
-            let actual = left_rear.get(expected.0).unwrap();
+            let actual = right_rear.get(expected.0).unwrap();
             let expected: Vec<_> = expected.1.iter().map(|s| s.to_string()).collect();
 
             assert_eq!(actual, &expected);
         }
+        assert_eq!(right_rear.len(), 10);
 
         // Rear
-        let front = setup.get("Rear").unwrap();
+        let rear = setup.get("Rear").unwrap();
         assert_eq!(
-            front.get("Fuel level").unwrap(),
+            rear.get("Fuel level").unwrap(),
             &vec!["5.3 gal".to_string()]
         );
-        assert_eq!(front.get("Toe-in").unwrap(), &vec![r#"+2/16""#.to_string()]);
+        assert_eq!(rear.get("Toe-in").unwrap(), &vec![r#"+2/16""#.to_string()]);
         assert_eq!(
-            front.get("Anti-roll bar").unwrap(),
+            rear.get("Anti-roll bar").unwrap(),
             &vec!["Unhooked".to_string()]
         );
+        assert_eq!(rear.len(), 3);
     }
 
     #[test]

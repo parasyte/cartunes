@@ -7,7 +7,6 @@ use crate::str_ext::Ellipsis;
 use copypasta::{ClipboardContext, ClipboardProvider};
 use egui::{CtxRef, Widget};
 use std::collections::{HashMap, VecDeque};
-use std::path::PathBuf;
 use std::time::{Duration, Instant};
 use winit::event_loop::EventLoopProxy;
 
