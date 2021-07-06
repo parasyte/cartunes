@@ -2,13 +2,15 @@
 
 use crate::config::{Config, UserTheme};
 use crate::framework::UserEvent;
-use crate::setup::Setups;
+use crate::setup::{Setup, Setups};
 use crate::str_ext::Ellipsis;
 use copypasta::{ClipboardContext, ClipboardProvider};
 use egui::{CtxRef, Widget};
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};
 use winit::event_loop::EventLoopProxy;
+
+mod grid;
 
 /// Manages all state required for rendering the GUI.
 pub(crate) struct Gui {
@@ -17,6 +19,15 @@ pub(crate) struct Gui {
 
     /// A tree of `Setups` containing all known setup exports.
     setups: Setups,
+
+    /// Selected track name.
+    selected_track_name: Option<String>,
+
+    /// Selected car name.
+    selected_car_name: Option<String>,
+
+    /// Selected setup indices.
+    selected_setups: Vec<usize>,
 
     /// An event loop proxy for sending user events.
     event_loop_proxy: EventLoopProxy<UserEvent>,
@@ -67,6 +78,9 @@ impl Gui {
         Self {
             config,
             setups,
+            selected_track_name: None,
+            selected_car_name: None,
+            selected_setups: Vec::new(),
             event_loop_proxy,
             about: false,
             preferences: false,
@@ -105,12 +119,141 @@ impl Gui {
         // Draw the main content area
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.set_enabled(enabled);
-            ui.label("Hello, world!");
+
+            // Draw car filters
+            ui.horizontal(|ui| {
+                self.track_selection(ui);
+                self.car_selection(ui);
+            });
+
+            // Draw setup filters
+            let setups = self.setup_selection(ui);
+
+            // Draw setup properties grid
+            egui::containers::ScrollArea::auto_sized().show(ui, |ui| {
+                grid::props_grid(ui, &setups);
+            });
         });
 
         // Draw the windows (if requested by the user)
         self.about_window(ctx, enabled);
         self.prefs_window(ctx, enabled, window);
+    }
+
+    /// Show track selection drop-down box.
+    fn track_selection(&mut self, ui: &mut egui::Ui) {
+        ui.label("Track:");
+        let track_selection = egui::ComboBox::from_id_source("track-selection")
+            .width(get_combo_box_width(ui, self.setups.tracks().keys()));
+        let track_selection = match self.selected_track_name.as_ref() {
+            Some(track_name) => track_selection.selected_text(track_name),
+            None => track_selection,
+        };
+        track_selection.show_ui(ui, |ui| {
+            let mut track_names: Vec<_> = self.setups.tracks().keys().collect();
+            track_names.sort_unstable();
+
+            for track_name in track_names {
+                let checked = self.selected_track_name.as_ref() == Some(track_name);
+                if ui.selectable_label(checked, track_name).clicked() {
+                    self.selected_track_name = Some(track_name.to_string());
+                    self.selected_car_name = None;
+                    self.selected_setups.clear();
+                }
+            }
+        });
+    }
+
+    /// Show car selection drop-down.
+    fn car_selection(&mut self, ui: &mut egui::Ui) {
+        ui.label("Car:");
+
+        // Create a child Ui that can be temporarily disabled
+        let mut ui = ui.child_ui(
+            ui.available_rect_before_wrap(),
+            egui::Layout::left_to_right(),
+        );
+        ui.set_enabled(self.selected_track_name.is_some());
+
+        let car_selection = egui::ComboBox::from_id_source("car-selection");
+        let car_selection = match self.selected_track_name.as_ref() {
+            Some(track_name) => car_selection.width(get_combo_box_width(
+                &ui,
+                self.setups
+                    .tracks()
+                    .get(track_name)
+                    .expect("Invalid track name")
+                    .keys(),
+            )),
+            None => car_selection,
+        };
+        let car_selection = match self.selected_car_name.as_ref() {
+            Some(car_name) => car_selection.selected_text(car_name),
+            None => car_selection,
+        };
+        car_selection.show_ui(&mut ui, |ui| {
+            if let Some(track_name) = self.selected_track_name.as_ref() {
+                let mut car_names: Vec<_> = self
+                    .setups
+                    .tracks()
+                    .get(track_name)
+                    .expect("Invalid track name")
+                    .keys()
+                    .collect();
+                car_names.sort_unstable();
+
+                for car_name in car_names {
+                    let checked = self.selected_car_name.as_ref() == Some(car_name);
+                    if ui.selectable_label(checked, car_name).clicked() {
+                        self.selected_car_name = Some(car_name.to_string());
+                        self.selected_setups.clear();
+                    }
+                }
+            }
+        });
+    }
+
+    /// Show setup selection check boxes.
+    fn setup_selection(&mut self, ui: &mut egui::Ui) -> Vec<&Setup> {
+        let mut output = Vec::new();
+
+        let selected_track_name = self.selected_track_name.as_ref();
+        let selected_car_name = self.selected_car_name.as_ref();
+        let selected_setups = &mut self.selected_setups;
+        let tracks = self.setups.tracks();
+
+        ui.horizontal(|ui| {
+            if let Some(track_name) = selected_track_name {
+                if let Some(car_name) = selected_car_name {
+                    let mut setups: Vec<_> = tracks
+                        .get(track_name)
+                        .expect("Invalid track name")
+                        .get(car_name)
+                        .expect("Invalid car name")
+                        .iter()
+                        .collect();
+                    setups.sort_unstable_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
+
+                    for (i, (name, _)) in setups.iter().enumerate() {
+                        let mut checked = selected_setups.contains(&i);
+                        // TODO: Colors
+                        if ui.checkbox(&mut checked, name).clicked() {
+                            if checked {
+                                selected_setups.push(i);
+                            } else if let Some(i) = selected_setups.iter().position(|&v| v == i) {
+                                selected_setups.remove(i);
+                            }
+                        }
+                    }
+
+                    for i in selected_setups {
+                        output.push(&setups[*i].1);
+                    }
+                }
+            }
+        });
+
+        output
     }
 
     /// Show "About" window.
@@ -353,4 +496,17 @@ impl ErrorButton {
             action: Box::new(action),
         }
     }
+}
+
+/// Get the width for a combo box by finding the widest string that it contains.
+fn get_combo_box_width<'a>(ui: &egui::Ui, choices: impl Iterator<Item = &'a String>) -> f32 {
+    let spacing = ui.spacing();
+    let default = spacing.interact_size.x + spacing.item_spacing.x + spacing.icon_width;
+    choices.fold(default, |width, choice| {
+        let galley = ui
+            .fonts()
+            .layout_no_wrap(egui::TextStyle::Button, choice.to_string());
+
+        width.max(galley.size.x + spacing.item_spacing.x + spacing.icon_width)
+    })
 }

@@ -44,15 +44,15 @@ impl Error {
 /// [Setups]
 /// ├── "Concord Speedway"
 /// │   ├── "VW Beetle"
-/// │   │   └── (FileName, [Setup 1])
+/// │   │   └── ([FileName], [Setup])
 /// │   └── "Skip Barber Formula 2000"
-/// │       ├── (FileName, [Setup 1])
-/// │       ├── (FileName, [Setup 2])
-/// │       └── (FileName, [Setup 3])
+/// │       ├── ([FileName], [Setup])
+/// │       ├── ([FileName], [Setup])
+/// │       └── ([FileName], [Setup])
 /// └── "Okayama International Raceway"
 ///     └── "VW Beetle"
-///         ├── (FileName, [Setup 1])
-///         └── (FileName, [Setup 2])
+///         ├── ([FileName], [Setup])
+///         └── ([FileName], [Setup])
 /// ```
 ///
 /// The first layer of depth contains track names (human-readable), meaning that setups are sorted
@@ -107,7 +107,7 @@ pub(crate) struct Setups(Tracks);
 
 type Tracks = HashMap<String, Cars>;
 type Cars = HashMap<String, Vec<(String, Setup)>>;
-type Setup = HashMap<String, Props>;
+pub(crate) type Setup = HashMap<String, Props>;
 type Props = HashMap<String, Vec<String>>;
 
 impl Setups {
