@@ -534,5 +534,7 @@ mod tests {
             .unwrap()
             .get("Skip Barber Formula 2000")
             .is_some());
+
+        assert_eq!(setups.0.len(), 2);
     }
 }
