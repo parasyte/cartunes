@@ -522,19 +522,19 @@ mod tests {
         let setups = Setups::new(&config);
 
         assert!(setups
-            .0
+            .tracks()
             .get("Charlotte Motor Speedway")
             .unwrap()
             .get("Global Mazda MX-5 Cup")
             .is_some());
 
         assert!(setups
-            .0
+            .tracks()
             .get("Centripetal Circuit")
             .unwrap()
             .get("Skip Barber Formula 2000")
             .is_some());
 
-        assert_eq!(setups.0.len(), 2);
+        assert_eq!(setups.tracks().len(), 2);
     }
 }
