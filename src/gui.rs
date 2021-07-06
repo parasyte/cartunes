@@ -186,8 +186,8 @@ impl Gui {
                             .pick_folder();
 
                         std::thread::spawn(move || {
-                            let choice = pollster::block_on(f)
-                                .map(|selected| PathBuf::from(selected.path()));
+                            let choice =
+                                pollster::block_on(f).map(|selected| selected.path().to_path_buf());
 
                             event_loop_proxy
                                 .send_event(UserEvent::SetupPath(choice))

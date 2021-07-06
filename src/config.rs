@@ -98,7 +98,7 @@ impl Config {
     /// The path is allowed to be nonexistent. It will not be created until the TOML is written.
     pub(crate) fn new<P: AsRef<Path>>(doc_path: P, min_size: PhysicalSize<u32>) -> Self {
         let mut config = Self {
-            doc_path: PathBuf::from(doc_path.as_ref()),
+            doc_path: doc_path.as_ref().to_path_buf(),
             doc: include_str!("default.toml").parse().unwrap(),
             setups_path: PathBuf::new(),
             min_size,
@@ -114,7 +114,9 @@ impl Config {
         // 3. `iRacing`
         // This path may not exist and is _not_ created by this application.
         let mut setups_path = UserDirs::new().map_or_else(PathBuf::default, |dirs| {
-            PathBuf::from(dirs.document_dir().unwrap_or_else(|| dirs.home_dir()))
+            dirs.document_dir()
+                .unwrap_or_else(|| dirs.home_dir())
+                .to_path_buf()
         });
         setups_path.push("iRacing");
 
@@ -131,7 +133,7 @@ impl Config {
         doc_path: P,
         min_size: PhysicalSize<u32>,
     ) -> Result<Option<Self>, Error> {
-        let doc_path = PathBuf::from(doc_path.as_ref());
+        let doc_path = doc_path.as_ref().to_path_buf();
         if !doc_path.exists() {
             println!("Doesn't exist!");
             return Ok(None);
@@ -200,7 +202,7 @@ impl Config {
 
     /// Update the setup exports path.
     pub(crate) fn update_setups_path<P: AsRef<Path>>(&mut self, setups_path: P) {
-        self.setups_path = PathBuf::from(setups_path.as_ref());
+        self.setups_path = setups_path.as_ref().to_path_buf();
 
         // Note that to_string_lossy() is destructive when the path contains invalid UTF-8 sequences.
         // If this is a problem in practice, we _could_ write unencodable paths as an array of
