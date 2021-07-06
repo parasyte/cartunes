@@ -44,15 +44,15 @@ impl Error {
 /// [Setups]
 /// ├── "Concord Speedway"
 /// │   ├── "VW Beetle"
-/// │   │   └── (Path, [Setup 1])
+/// │   │   └── (FileName, [Setup 1])
 /// │   └── "Skip Barber Formula 2000"
-/// │       ├── (Path, [Setup 1])
-/// │       ├── (Path, [Setup 2])
-/// │       └── (Path, [Setup 3])
+/// │       ├── (FileName, [Setup 1])
+/// │       ├── (FileName, [Setup 2])
+/// │       └── (FileName, [Setup 3])
 /// └── "Okayama International Raceway"
 ///     └── "VW Beetle"
-///         ├── (Path, [Setup 1])
-///         └── (Path, [Setup 2])
+///         ├── (FileName, [Setup 1])
+///         └── (FileName, [Setup 2])
 /// ```
 ///
 /// The first layer of depth contains track names (human-readable), meaning that setups are sorted
@@ -61,8 +61,8 @@ impl Error {
 /// At the second layer of depth are the car names (human readable). Setups are also sorted by the
 /// cars there were exported for.
 ///
-/// Finally at the third level, each car has a list of `Setup` trees along with the file path that
-/// it was loaded from. Each car can have as many setups as needed.
+/// Finally at the third level, each car has a list of `Setup` trees along with the file name that
+/// it was loaded from (without the extension). Each car can have as many setups as needed.
 ///
 /// The `Setup` type is similarly an alias for a deeply nested `HashMap` representing a single
 /// instance of a car setup.
@@ -106,7 +106,7 @@ impl Error {
 pub(crate) struct Setups(Tracks);
 
 type Tracks = HashMap<String, Cars>;
-type Cars = HashMap<String, Vec<(PathBuf, Setup)>>;
+type Cars = HashMap<String, Vec<(String, Setup)>>;
 type Setup = HashMap<String, Props>;
 type Props = HashMap<String, Vec<String>>;
 
@@ -148,9 +148,14 @@ impl Setups {
     fn load_file<P: AsRef<Path>>(&mut self, path: P, config: &Config) -> Result<(), Error> {
         let (track_name, car_name, setup) = setup_from_html(&path, config)?;
 
+        let file_name = path
+            .as_ref()
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| car_name.clone());
         let cars = self.0.entry(track_name).or_default();
         let setups = cars.entry(car_name).or_default();
-        setups.push((path.as_ref().to_path_buf(), setup));
+        setups.push((file_name, setup));
 
         Ok(())
     }
@@ -284,6 +289,37 @@ fn get_properties(mut node_ref: Option<kuchiki::NodeRef>) -> Props {
 mod tests {
     use super::*;
     use winit::dpi::PhysicalSize;
+
+    #[test]
+    fn test_load_dir() {
+        let mut config = Config::new("/tmp/some/path.toml", PhysicalSize::new(0, 0));
+        config.update_setups_path("./fixtures");
+        let setups = Setups::new(&config);
+
+        let cars = setups
+            .tracks()
+            .get("Centripetal Circuit")
+            .unwrap()
+            .get("Skip Barber Formula 2000")
+            .unwrap();
+        assert_eq!(cars.len(), 1);
+        let (file_name, skip_barber) = &cars[0];
+        assert_eq!(file_name, "skip_barber_centripetal");
+        assert_eq!(skip_barber.len(), 6);
+
+        let cars = setups
+            .tracks()
+            .get("Charlotte Motor Speedway")
+            .unwrap()
+            .get("Global Mazda MX-5 Cup")
+            .unwrap();
+        assert_eq!(cars.len(), 1);
+        let (file_name, mx5) = &cars[0];
+        assert_eq!(file_name, "mx5_charlotte_legends_oval");
+        assert_eq!(mx5.len(), 6);
+
+        assert_eq!(setups.tracks().len(), 2);
+    }
 
     #[test]
     fn test_setup_skip_barber() {
@@ -513,28 +549,5 @@ mod tests {
             &vec!["Unhooked".to_string()]
         );
         assert_eq!(rear.len(), 3);
-    }
-
-    #[test]
-    fn test_load_dir() {
-        let mut config = Config::new("/tmp/some/path.toml", PhysicalSize::new(0, 0));
-        config.update_setups_path("./fixtures");
-        let setups = Setups::new(&config);
-
-        assert!(setups
-            .tracks()
-            .get("Charlotte Motor Speedway")
-            .unwrap()
-            .get("Global Mazda MX-5 Cup")
-            .is_some());
-
-        assert!(setups
-            .tracks()
-            .get("Centripetal Circuit")
-            .unwrap()
-            .get("Skip Barber Formula 2000")
-            .is_some());
-
-        assert_eq!(setups.tracks().len(), 2);
     }
 }
