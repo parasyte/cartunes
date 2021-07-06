@@ -124,6 +124,7 @@ impl Setups {
 
         let mut setups = Self::default();
         let path = config.get_setups_path();
+        // XXX: Maybe add support for warning messages to the GUI instead of ignoring all errors?
         let walker = WalkDir::new(path)
             .into_iter()
             .filter_entry(|entry| entry.file_type().is_dir() || is_html(entry))
@@ -185,7 +186,7 @@ fn setup_from_html<P: AsRef<Path>>(
 
     // Map car ID to a human-readable name
     let car_name = config
-        .cars
+        .cars()
         .get(&car_id)
         .map_or(car_id, |name| name.to_string());
 
@@ -201,14 +202,14 @@ fn setup_from_html<P: AsRef<Path>>(
 
     // Get the track unique identifier
     let track_id = config
-        .track_ids
+        .track_ids()
         .get_longest_common_prefix(&track_id)
         .unwrap_or_else(|| track_id.as_bytes());
     let track_id = String::from_utf8_lossy(track_id).to_string();
 
     // Map track ID to a human-readable name
     let track_name = config
-        .tracks
+        .tracks()
         .get(&track_id)
         .map_or(track_id, |name| name.to_string());
 

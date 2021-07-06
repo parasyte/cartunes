@@ -50,14 +50,14 @@ pub(crate) struct Config {
     /// User's theme choice.
     theme: UserTheme,
 
-    /// Map raw track IDs to unique track IDs (READ-ONLY).
-    pub(crate) track_ids: PatriciaSet,
+    /// Map raw track IDs to unique track IDs.
+    track_ids: PatriciaSet,
 
-    /// Map track IDs to track names (READ-ONLY).
-    pub(crate) tracks: HashMap<String, String>,
+    /// Map track IDs to track names.
+    tracks: HashMap<String, String>,
 
-    /// Map car IDs to car names (READ-ONLY).
-    pub(crate) cars: HashMap<String, String>,
+    /// Map car IDs to car names.
+    cars: HashMap<String, String>,
 }
 
 /// Window settings.
@@ -220,6 +220,21 @@ impl Config {
     pub(crate) fn update_theme(&mut self, theme: UserTheme) {
         self.theme = theme;
         self.doc["config"]["theme"] = value(theme.as_str());
+    }
+
+    /// Get a reference for mapping raw track IDs to unique track IDs.
+    pub(crate) fn track_ids(&self) -> &PatriciaSet {
+        &self.track_ids
+    }
+
+    /// Get a reference for mapping track IDs to track names.
+    pub(crate) fn tracks(&self) -> &HashMap<String, String> {
+        &self.tracks
+    }
+
+    /// Get a reference for mapping car IDs to car names.
+    pub(crate) fn cars(&self) -> &HashMap<String, String> {
+        &self.cars
     }
 
     /// Load track and car info from config.
