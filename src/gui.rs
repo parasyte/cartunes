@@ -127,11 +127,11 @@ impl Gui {
             });
 
             // Draw setup filters
-            let setups = self.setup_selection(ui);
+            let (car_name, setups) = self.setup_selection(ui);
 
             // Draw setup properties grid
             egui::containers::ScrollArea::auto_sized().show(ui, |ui| {
-                grid::props_grid(ui, &setups);
+                grid::props_grid(ui, car_name, &setups);
             });
         });
 
@@ -214,8 +214,9 @@ impl Gui {
     }
 
     /// Show setup selection check boxes.
-    fn setup_selection(&mut self, ui: &mut egui::Ui) -> Vec<&Setup> {
+    fn setup_selection(&mut self, ui: &mut egui::Ui) -> (&str, Vec<&Setup>) {
         let mut output = Vec::new();
+        let mut output_car_name = "";
 
         let selected_track_name = self.selected_track_name.as_ref();
         let selected_car_name = self.selected_car_name.as_ref();
@@ -225,6 +226,8 @@ impl Gui {
         ui.horizontal(|ui| {
             if let Some(track_name) = selected_track_name {
                 if let Some(car_name) = selected_car_name {
+                    output_car_name = car_name.as_str();
+
                     let mut setups: Vec<_> = tracks
                         .get(track_name)
                         .expect("Invalid track name")
@@ -253,7 +256,7 @@ impl Gui {
             }
         });
 
-        output
+        (output_car_name, output)
     }
 
     /// Show "About" window.

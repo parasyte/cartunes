@@ -2,7 +2,7 @@ use crate::setup::Setup;
 use std::collections::HashMap;
 
 /// Draw all property groups and properties.
-pub(crate) fn props_grid(ui: &mut egui::Ui, setups: &[&Setup]) {
+pub(crate) fn props_grid(ui: &mut egui::Ui, car_name: &str, setups: &[&Setup]) {
     // TODO: Colors
 
     // Gather headers
@@ -12,6 +12,7 @@ pub(crate) fn props_grid(ui: &mut egui::Ui, setups: &[&Setup]) {
     // Draw headers
     for prop_group in headers {
         egui::CollapsingHeader::new(prop_group)
+            .id_source(format!("{}-{}", car_name, prop_group))
             .default_open(true)
             .show(ui, |ui| {
                 egui::Grid::new(format!("{}-grid", prop_group))
