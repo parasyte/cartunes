@@ -351,18 +351,23 @@ fn create_fonts(theme: Theme) -> egui::FontDefinitions {
 
 /// Create the default style for egui based on system settings.
 fn create_style(theme: Theme) -> egui::Style {
-    // The default light theme has grey fonts. We want solid black.
+    let mut visuals = match theme {
+        Theme::Dark => egui::Visuals::dark(),
+        Theme::Light => {
+            let mut visuals = egui::Visuals::light();
+
+            // The default light theme has grey fonts. We want solid black.
+            visuals.widgets.noninteractive.fg_stroke.color = egui::Color32::BLACK;
+
+            visuals
+        }
+    };
+
+    // Show a background behind collapsing headers.
+    visuals.collapsing_header_frame = true;
+
     egui::Style {
-        visuals: match theme {
-            Theme::Dark => egui::Visuals::dark(),
-            Theme::Light => {
-                let mut visuals = egui::Visuals::light();
-
-                visuals.widgets.noninteractive.fg_stroke.color = egui::Color32::BLACK;
-
-                visuals
-            }
-        },
+        visuals,
         ..egui::Style::default()
     }
 }
