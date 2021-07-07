@@ -16,7 +16,6 @@ pub(crate) fn props_grid(ui: &mut egui::Ui, car_name: &str, setups: &[&Setup]) {
             .default_open(true)
             .show(ui, |ui| {
                 egui::Grid::new(format!("{}-grid", prop_group))
-                    // .min_col_width(150.0)
                     .spacing(egui::Vec2::new(64.0, ui.spacing().item_spacing.y))
                     .show(ui, |ui| {
                         // Gather property names
@@ -31,13 +30,8 @@ pub(crate) fn props_grid(ui: &mut egui::Ui, car_name: &str, setups: &[&Setup]) {
                             ui.label(prop_name);
 
                             for setup in setups {
-                                // ui.horizontal(|ui| {
-                                //     let values =
-                                //         setup.get(prop_group).unwrap().get(prop_name).unwrap();
-                                //     for value in values {
-                                //         ui.label(value);
-                                //     }
-                                // });
+                                // TODO: Cannot use vertical or horizontal layout here,
+                                // because it breaks column width
                                 let values = setup
                                     .get(prop_group)
                                     .unwrap()
@@ -54,15 +48,17 @@ pub(crate) fn props_grid(ui: &mut egui::Ui, car_name: &str, setups: &[&Setup]) {
 }
 
 /// Get the intersection of keys that exists in each `HashMap`.
-fn intersect_keys<'a, T>(hashmap: &'a [&'a HashMap<String, T>]) -> Vec<&'a str> {
-    let mut all_keys = hashmap
+fn intersect_keys<'a, T>(maps: &'a [&'a HashMap<String, T>]) -> Vec<&'a str> {
+    let mut all_keys = maps
         .iter()
         .map(|inner| inner.keys().map(|s| s.as_str()).collect());
+
     let mut output = if let Some(output) = all_keys.next() {
         output
     } else {
         Vec::new()
     };
+
     for keys in all_keys {
         output.retain(|key| keys.contains(key));
     }
