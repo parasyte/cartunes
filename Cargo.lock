@@ -179,6 +179,7 @@ dependencies = [
  "egui_wgpu_backend",
  "egui_winit_platform",
  "env_logger",
+ "epaint",
  "kuchiki",
  "log",
  "patricia_tree",
@@ -702,6 +703,7 @@ dependencies = [
  "atomic_refcell",
  "emath",
  "ordered-float",
+ "parking_lot",
 ]
 
 [[package]]

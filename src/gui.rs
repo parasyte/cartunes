@@ -1,5 +1,6 @@
 //! User interface structure, rendering, and state management.
 
+use self::grid::SetupGrid;
 use crate::config::{Config, UserTheme};
 use crate::framework::UserEvent;
 use crate::setup::{Setup, Setups};
@@ -128,11 +129,12 @@ impl Gui {
 
             // Draw setup filters
             let (car_name, setups) = self.setup_selection(ui);
-
-            // Draw setup properties grid
-            egui::containers::ScrollArea::auto_sized().show(ui, |ui| {
-                grid::props_grid(ui, car_name, &setups);
-            });
+            if !setups.is_empty() {
+                // Draw setup properties grid
+                egui::containers::ScrollArea::auto_sized().show(ui, |ui| {
+                    SetupGrid::new(ui, &setups).show(ui, car_name);
+                });
+            }
         });
 
         // Draw the windows (if requested by the user)
