@@ -169,47 +169,48 @@ impl Gui {
         ui.label("Car:");
 
         // Create a child Ui that can be temporarily disabled
-        let mut ui = ui.child_ui(
-            ui.available_rect_before_wrap(),
-            egui::Layout::left_to_right(),
-        );
-        ui.set_enabled(self.selected_track_name.is_some());
+        ui.scope(|ui| {
+            ui.set_enabled(self.selected_track_name.is_some());
 
-        let car_selection = egui::ComboBox::from_id_source("car-selection");
-        let car_selection = match self.selected_track_name.as_ref() {
-            Some(track_name) => car_selection.width(get_combo_box_width(
-                &ui,
-                self.setups
-                    .tracks()
-                    .get(track_name)
-                    .expect("Invalid track name")
-                    .keys(),
-            )),
-            None => car_selection,
-        };
-        let car_selection = match self.selected_car_name.as_ref() {
-            Some(car_name) => car_selection.selected_text(car_name),
-            None => car_selection,
-        };
-        car_selection.show_ui(&mut ui, |ui| {
-            if let Some(track_name) = self.selected_track_name.as_ref() {
-                let mut car_names: Vec<_> = self
-                    .setups
-                    .tracks()
-                    .get(track_name)
-                    .expect("Invalid track name")
-                    .keys()
-                    .collect();
-                car_names.sort_unstable();
+            let car_selection = egui::ComboBox::from_id_source("car-selection");
+            let car_selection = match self.selected_track_name.as_ref() {
+                Some(track_name) => {
+                    // TODO: DRY
+                    let car_names = self
+                        .setups
+                        .tracks()
+                        .get(track_name)
+                        .expect("Invalid track name")
+                        .keys();
 
-                for car_name in car_names {
-                    let checked = self.selected_car_name.as_ref() == Some(car_name);
-                    if ui.selectable_label(checked, car_name).clicked() {
-                        self.selected_car_name = Some(car_name.to_string());
-                        self.selected_setups.clear();
+                    car_selection.width(get_combo_box_width(ui, car_names))
+                }
+                None => car_selection,
+            };
+            let car_selection = match self.selected_car_name.as_ref() {
+                Some(car_name) => car_selection.selected_text(car_name),
+                None => car_selection,
+            };
+            car_selection.show_ui(ui, |ui| {
+                if let Some(track_name) = self.selected_track_name.as_ref() {
+                    let mut car_names: Vec<_> = self
+                        .setups
+                        .tracks()
+                        .get(track_name)
+                        .expect("Invalid track name")
+                        .keys()
+                        .collect();
+                    car_names.sort_unstable();
+
+                    for car_name in car_names {
+                        let checked = self.selected_car_name.as_ref() == Some(car_name);
+                        if ui.selectable_label(checked, car_name).clicked() {
+                            self.selected_car_name = Some(car_name.to_string());
+                            self.selected_setups.clear();
+                        }
                     }
                 }
-            }
+            });
         });
     }
 
