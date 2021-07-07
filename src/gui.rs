@@ -223,7 +223,7 @@ impl Gui {
         let selected_setups = &mut self.selected_setups;
         let tracks = self.setups.tracks();
 
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             if let Some(track_name) = selected_track_name {
                 if let Some(car_name) = selected_car_name {
                     output_car_name = car_name.as_str();
