@@ -145,9 +145,7 @@ mod tests {
     /// Test `intersect_keys()` with two `HashMap`s.
     #[test]
     fn test_intersect_keys_two() {
-        let mut map = HashMap::new();
-        map.insert("foo".to_string(), ());
-        map.insert("bar".to_string(), ());
+        let map = ["foo", "bar"].iter().map(|v| (v.to_string(), ())).collect();
 
         let maps = &[&map, &map];
         let keys = intersect_keys(maps);
@@ -159,9 +157,7 @@ mod tests {
     /// Test `intersect_keys()` with three `HashMap`s.
     #[test]
     fn test_intersect_keys_three() {
-        let mut map = HashMap::new();
-        map.insert("foo".to_string(), ());
-        map.insert("bar".to_string(), ());
+        let map = ["foo", "bar"].iter().map(|v| (v.to_string(), ())).collect();
 
         let maps = &[&map, &map, &map];
         let keys = intersect_keys(maps);
@@ -173,9 +169,7 @@ mod tests {
     /// Test `intersect_keys()` with four `HashMap`s.
     #[test]
     fn test_intersect_keys_four() {
-        let mut map = HashMap::new();
-        map.insert("foo".to_string(), ());
-        map.insert("bar".to_string(), ());
+        let map = ["foo", "bar"].iter().map(|v| (v.to_string(), ())).collect();
 
         let maps = &[&map, &map, &map, &map];
         let keys = intersect_keys(maps);
@@ -189,9 +183,7 @@ mod tests {
     /// The two maps are the same except "super" contains an additional key.
     #[test]
     fn test_intersect_keys_super_sub() {
-        let mut sub_map = HashMap::new();
-        sub_map.insert("foo".to_string(), ());
-        sub_map.insert("bar".to_string(), ());
+        let sub_map: HashMap<_, _> = ["foo", "bar"].iter().map(|v| (v.to_string(), ())).collect();
         let mut super_map = sub_map.clone();
         super_map.insert("baz".to_string(), ());
 
@@ -207,9 +199,7 @@ mod tests {
     /// The two maps are the same except "super" contains an additional key.
     #[test]
     fn test_intersect_keys_sub_super() {
-        let mut sub_map = HashMap::new();
-        sub_map.insert("foo".to_string(), ());
-        sub_map.insert("bar".to_string(), ());
+        let sub_map: HashMap<_, _> = ["foo", "bar"].iter().map(|v| (v.to_string(), ())).collect();
         let mut super_map = sub_map.clone();
         super_map.insert("baz".to_string(), ());
 
@@ -223,12 +213,10 @@ mod tests {
     /// Test `intersect_keys()` with `HashMap`s that share only a few keys.
     #[test]
     fn test_intersect_keys_with_intersection() {
-        let mut map_a = HashMap::new();
-        map_a.insert("foo".to_string(), ());
-        map_a.insert("bar".to_string(), ());
-        let mut map_b = map_a.clone();
+        let mut map_a: HashMap<_, _> = ["foo", "bar"].iter().map(|v| (v.to_string(), ())).collect();
+        let mut map_b: HashMap<_, _> = map_a.clone();
         map_a.insert("baz".to_string(), ());
-        map_b.insert("quux".to_string(), ());
+        map_b.insert("qux".to_string(), ());
 
         let maps = &[&map_a, &map_b];
         let keys = intersect_keys(maps);
@@ -240,12 +228,8 @@ mod tests {
     /// Test `intersect_keys()` with `HashMap`s that share no keys.
     #[test]
     fn test_intersect_keys_without_intersection() {
-        let mut map_a = HashMap::new();
-        map_a.insert("foo".to_string(), ());
-        map_a.insert("bar".to_string(), ());
-        let mut map_b = HashMap::new();
-        map_b.insert("baz".to_string(), ());
-        map_b.insert("quux".to_string(), ());
+        let map_a = ["foo", "bar"].iter().map(|v| (v.to_string(), ())).collect();
+        let map_b = ["baz", "qux"].iter().map(|v| (v.to_string(), ())).collect();
 
         let maps = &[&map_a, &map_b];
         let keys = intersect_keys(maps);
