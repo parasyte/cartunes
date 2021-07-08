@@ -4,18 +4,18 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 /// Provides structure for representing a grid of string values.
-pub(crate) struct SetupGrid {
+pub(crate) struct SetupGrid<'setup> {
     /// Column widths are provided here.
     columns: Vec<f32>,
 
     /// The grid contains zero or more groups.
-    groups: Vec<Group>,
+    groups: Vec<Group<'setup>>,
 }
 
 // A group containing a matrix of strings.
-struct Group {
+struct Group<'setup> {
     /// Group name is shown in a collapsible header.
-    name: String,
+    name: &'setup str,
 
     /// The matrix is row-major
     ///
@@ -23,9 +23,9 @@ struct Group {
     matrix: Vec<Vec<Arc<Galley>>>,
 }
 
-impl SetupGrid {
+impl<'setup> SetupGrid<'setup> {
     /// Create a new `SetupGrid` from a slice of `Setup`s.
-    pub(crate) fn new(ui: &egui::Ui, setups: &[&Setup]) -> Self {
+    pub(crate) fn new(ui: &egui::Ui, setups: &'setup [&'setup Setup]) -> Self {
         // Gather groups
         let mut groups = intersect_keys(setups);
         groups.sort_unstable();
@@ -47,7 +47,7 @@ impl SetupGrid {
             prop_names.sort_unstable();
 
             let mut group = Group {
-                name: prop_group.to_string(),
+                name: prop_group,
                 matrix: Vec::with_capacity(prop_names.len()),
             };
 
@@ -97,7 +97,7 @@ impl SetupGrid {
 
         // Draw headers
         for prop_group in self.groups.into_iter() {
-            egui::CollapsingHeader::new(&prop_group.name)
+            egui::CollapsingHeader::new(prop_group.name)
                 .id_source(format!("{}-{}", car_name, prop_group.name))
                 .default_open(true)
                 .show(ui, |ui| {
