@@ -87,7 +87,6 @@ fn main() -> Result<(), Error> {
     env_logger::init();
 
     let (event_loop, window, mut gpu, mut framework) = create_window()?;
-    let event_loop_proxy = event_loop.create_proxy();
     let mut input = WinitInputHelper::new();
     let mut keep_config = ConfigHandler::Replace;
 
@@ -140,9 +139,7 @@ fn main() -> Result<(), Error> {
                 WindowEvent::CloseRequested => {
                     // Exit immediately if we've been asked to keep the config file,
                     // or if saving was successful
-                    if keep_config == ConfigHandler::Keep
-                        || framework.save_config(event_loop_proxy.clone(), &window)
-                    {
+                    if keep_config == ConfigHandler::Keep || framework.save_config(&window) {
                         *control_flow = ControlFlow::Exit;
                     }
                 }

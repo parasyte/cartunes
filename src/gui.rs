@@ -468,6 +468,11 @@ impl Gui {
             }
         }
     }
+
+    /// Get an event-loop proxy that can be used to send events back to the `winit` event loop.
+    pub(crate) fn event_loop_proxy(&self) -> EventLoopProxy<UserEvent> {
+        self.event_loop_proxy.clone()
+    }
 }
 
 impl ShowError {

@@ -233,15 +233,13 @@ impl Framework {
     ///
     /// Returns true on success. When saving fails, the error is shown to the user and `false` is
     /// returned.
-    pub(crate) fn save_config(
-        &mut self,
-        event_loop_proxy: EventLoopProxy<UserEvent>,
-        window: &winit::window::Window,
-    ) -> bool {
+    pub(crate) fn save_config(&mut self, window: &winit::window::Window) -> bool {
         self.gui.config.update_window(window);
         match self.gui.config.write_toml() {
             Ok(()) => true,
             Err(err) => {
+                let event_loop_proxy = self.gui.event_loop_proxy();
+
                 // Error handling when saving the config fails
                 let err = ShowError::new(
                     err,
