@@ -128,11 +128,12 @@ impl Gui {
             });
 
             // Draw setup filters
-            let (car_name, setups) = self.setup_selection(ui);
+            let colors = self.config.colors();
+            let (car_name, setups) = self.setup_selection(ui, &colors);
             if !setups.is_empty() {
                 // Draw setup properties grid
                 egui::containers::ScrollArea::auto_sized().show(ui, |ui| {
-                    SetupGrid::new(ui, &setups).show(ui, car_name);
+                    SetupGrid::new(ui, &setups, &colors).show(ui, car_name);
                 });
             }
         });
@@ -217,7 +218,11 @@ impl Gui {
     }
 
     /// Show setup selection check boxes.
-    fn setup_selection(&mut self, ui: &mut egui::Ui) -> (&str, Vec<&Setup>) {
+    fn setup_selection(
+        &mut self,
+        ui: &mut egui::Ui,
+        colors: &[egui::Color32],
+    ) -> (&str, Vec<&Setup>) {
         let mut output = Vec::new();
         let mut output_car_name = "";
 
@@ -241,12 +246,21 @@ impl Gui {
                     setups.sort_unstable_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
 
                     for (i, (name, _)) in setups.iter().enumerate() {
-                        let mut checked = selected_setups.contains(&i);
-                        // TODO: Colors
-                        if ui.checkbox(&mut checked, name).clicked() {
+                        let position = selected_setups.iter().position(|&v| v == i);
+                        let mut checked = position.is_some();
+                        let color = position
+                            .map(|i| colors.iter().cycle().nth(i))
+                            .flatten()
+                            .cloned()
+                            .unwrap_or_else(|| ui.visuals().text_color());
+
+                        let checkbox = egui::Checkbox::new(&mut checked, name)
+                            .text_color(color)
+                            .ui(ui);
+                        if checkbox.clicked() {
                             if checked {
                                 selected_setups.push(i);
-                            } else if let Some(i) = selected_setups.iter().position(|&v| v == i) {
+                            } else if let Some(i) = position {
                                 selected_setups.remove(i);
                             }
                         }

@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
-use toml_edit::{table, value, Document, Item, TomlError};
+use toml_edit::{Document, Item, TomlError};
 use winit::dpi::{PhysicalPosition, PhysicalSize};
 use winit::window::Theme;
 
@@ -24,9 +24,13 @@ pub(crate) enum Error {
     #[error("Configuration parse error: {0}")]
     Parse(#[from] TomlError),
 
-    /// Type error
+    /// Type error.
     #[error("Expected {path:?} to be type {expected}")]
     Type { path: String, expected: String },
+
+    /// Color format.
+    #[error("Expected {0:?} to be a hex color in `#rrggbb` format")]
+    Color(String),
 }
 
 /// Application configuration backed by TOML.
@@ -49,6 +53,9 @@ pub(crate) struct Config {
 
     /// User's theme choice.
     theme: UserTheme,
+
+    // User's color-coding choices.
+    colors: Vec<egui::Color32>,
 
     /// Map raw track IDs to unique track IDs.
     track_ids: PatriciaSet,
@@ -103,6 +110,7 @@ impl Config {
             setups_path: PathBuf::new(),
             min_size,
             theme: UserTheme::Auto,
+            colors: Vec::new(),
             track_ids: PatriciaSet::new(),
             tracks: HashMap::new(),
             cars: HashMap::new(),
@@ -122,6 +130,7 @@ impl Config {
 
         config.update_setups_path(setups_path);
         config.load_tracks_and_cars().unwrap();
+        config.load_colors().unwrap();
 
         config
     }
@@ -154,6 +163,7 @@ impl Config {
         config.theme = theme;
         config.update_setups_path(setups_path);
         config.load_tracks_and_cars()?;
+        config.load_colors()?;
 
         Ok(Some(config))
     }
@@ -210,7 +220,7 @@ impl Config {
         // even when the path cannot be encoded as valid UTF-8.
         let setups_path = self.setups_path.as_path().to_string_lossy();
 
-        self.doc["config"]["setups_path"] = value(setups_path.as_ref());
+        self.doc["config"]["setups_path"] = toml_edit::value(setups_path.as_ref());
     }
 
     /// Get a reference to the theme preference.
@@ -221,7 +231,7 @@ impl Config {
     /// Update the theme preference.
     pub(crate) fn update_theme(&mut self, theme: UserTheme) {
         self.theme = theme;
-        self.doc["config"]["theme"] = value(theme.as_str());
+        self.doc["config"]["theme"] = toml_edit::value(theme.as_str());
     }
 
     /// Get a reference for mapping raw track IDs to unique track IDs.
@@ -239,9 +249,15 @@ impl Config {
         &self.cars
     }
 
+    // Get user's color-coding choices.
+    pub(crate) fn colors(&self) -> Vec<egui::Color32> {
+        self.colors.clone()
+    }
+
     /// Load track and car info from config.
     fn load_tracks_and_cars(&mut self) -> Result<(), Error> {
-        if let Some(tracks) = self.doc["tracks"].as_table() {
+        let table = &self.doc["tracks"];
+        if let Some(tracks) = table.as_table() {
             for (id, name) in tracks.iter() {
                 let name = name
                     .as_str()
@@ -250,9 +266,12 @@ impl Config {
                 self.track_ids.insert(id.to_string());
                 self.tracks.insert(id.to_string(), name.to_string());
             }
+        } else if !table.is_none() {
+            return Err(Error::type_error("tracks", "table"));
         }
 
-        if let Some(cars) = self.doc["cars"].as_table() {
+        let cars = &self.doc["cars"];
+        if let Some(cars) = cars.as_table() {
             for (id, name) in cars.iter() {
                 let name = name
                     .as_str()
@@ -260,6 +279,44 @@ impl Config {
 
                 self.cars.insert(id.to_string(), name.to_string());
             }
+        } else if !cars.is_none() {
+            return Err(Error::type_error("cars", "table"));
+        }
+
+        Ok(())
+    }
+
+    /// Load column colors from config.
+    fn load_colors(&mut self) -> Result<(), Error> {
+        let colors = &self.doc["config"]["colors"];
+        if let Some(colors) = colors.as_array() {
+            let mut parsed = Vec::new();
+
+            for (i, color) in colors.iter().enumerate() {
+                let color = color
+                    .as_str()
+                    .ok_or_else(|| Error::type_error(&format!("config.colors[{}]", i), "string"))?;
+
+                // Validate color format. Require HTML hex `#rrggbb` for convenience
+                let mut validator = color.chars();
+                if color.len() != 7
+                    || validator.next().unwrap() != '#'
+                    || validator.any(|ch| !ch.is_ascii_hexdigit())
+                {
+                    return Err(Error::Color(format!("config.colors[{}]", i)));
+                }
+
+                let r = u8::from_str_radix(&color[1..3], 16).unwrap();
+                let g = u8::from_str_radix(&color[3..5], 16).unwrap();
+                let b = u8::from_str_radix(&color[5..7], 16).unwrap();
+
+                parsed.push(egui::Color32::from_rgb(r, g, b));
+            }
+
+            // If all colors are parsed successfully, replace the entire config
+            self.colors = parsed;
+        } else if !colors.is_none() {
+            return Err(Error::type_error("config.colors", "array"));
         }
 
         Ok(())
@@ -287,12 +344,12 @@ impl Window {
 
     /// Create a TOML table from this Window.
     fn to_table(&self) -> Item {
-        let mut output = table();
+        let mut output = toml_edit::table();
 
-        output["x"] = value(self.position.x as i64);
-        output["y"] = value(self.position.y as i64);
-        output["width"] = value(self.size.width as i64);
-        output["height"] = value(self.size.height as i64);
+        output["x"] = toml_edit::value(self.position.x as i64);
+        output["y"] = toml_edit::value(self.position.y as i64);
+        output["width"] = toml_edit::value(self.size.width as i64);
+        output["height"] = toml_edit::value(self.size.height as i64);
 
         output
     }

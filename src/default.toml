@@ -5,6 +5,17 @@ setups_path = ''
 # Acceptable theme values are "dark", "light", and "auto".
 theme = "auto"
 
+# You can have as many column colors as you like.
+# The default colors look especially vibrant with the dark theme.
+colors = [
+    "#911691", # Magenta
+    "#661dc4", # Purple
+    "#116ea8", # Blue
+    "#0e8f79", # Sea Foam
+    "#8f8c14", # Yellow
+    "#915e17", # Orange
+]
+
 [window]
 
 

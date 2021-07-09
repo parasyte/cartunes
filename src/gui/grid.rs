@@ -12,7 +12,7 @@ pub(crate) struct SetupGrid<'setup> {
     groups: Vec<Group<'setup>>,
 }
 
-// A group containing a matrix of strings.
+/// A group containing a matrix of strings.
 struct Group<'setup> {
     /// Group name is shown in a collapsible header.
     name: &'setup str,
@@ -20,12 +20,25 @@ struct Group<'setup> {
     /// The matrix is row-major
     ///
     /// I.e. the inner vector is a list of columns with the same length as `Grid::columns`.
-    matrix: Vec<Vec<Arc<Galley>>>,
+    matrix: Vec<Vec<Label>>,
+}
+
+/// A label that can be displayed in a column.
+struct Label {
+    /// Make the label pretty.
+    color: egui::Color32,
+
+    /// Container for the label text and style.
+    galley: Arc<Galley>,
 }
 
 impl<'setup> SetupGrid<'setup> {
     /// Create a new `SetupGrid` from a slice of `Setup`s.
-    pub(crate) fn new(ui: &egui::Ui, setups: &'setup [&'setup Setup]) -> Self {
+    pub(crate) fn new(
+        ui: &egui::Ui,
+        setups: &'setup [&'setup Setup],
+        colors: &[egui::Color32],
+    ) -> Self {
         // Gather groups
         let mut groups = intersect_keys(setups);
         groups.sort_unstable();
@@ -62,7 +75,13 @@ impl<'setup> SetupGrid<'setup> {
                 let width = galley.size.x + ui.spacing().item_spacing.x * 5.0;
                 output.columns[i] = output.columns[i].max(width);
                 i += 1;
-                columns.push(galley);
+
+                columns.push(Label {
+                    color: ui.visuals().text_color(),
+                    galley,
+                });
+
+                let mut colors = colors.iter().cloned().cycle();
 
                 for setup in setups {
                     let values = setup
@@ -73,11 +92,13 @@ impl<'setup> SetupGrid<'setup> {
                         .join(", ");
 
                     // Calculate width of `values`
+                    let color = colors.next().unwrap_or_else(|| ui.visuals().text_color());
                     let galley = ui.fonts().layout_no_wrap(egui::TextStyle::Body, values);
                     let width = galley.size.x + ui.spacing().item_spacing.x * 2.0;
                     output.columns[i] = output.columns[i].max(width);
                     i += 1;
-                    columns.push(galley);
+
+                    columns.push(Label { color, galley });
                 }
 
                 group.matrix.push(columns);
@@ -105,12 +126,11 @@ impl<'setup> SetupGrid<'setup> {
                     for row in prop_group.matrix.into_iter() {
                         ui.horizontal(|ui| {
                             // Draw each column
-                            for (i, galley) in row.into_iter().enumerate() {
-                                let size = egui::Vec2::new(column_widths[i], galley.size.y);
+                            for (i, label) in row.into_iter().enumerate() {
+                                let size = egui::Vec2::new(column_widths[i], label.galley.size.y);
                                 let (rect, _) = ui.allocate_exact_size(size, egui::Sense::hover());
 
-                                ui.painter()
-                                    .galley(rect.min, galley, ui.visuals().text_color());
+                                ui.painter().galley(rect.min, label.galley, label.color);
                             }
                         });
                     }
