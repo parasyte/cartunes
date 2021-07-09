@@ -266,15 +266,20 @@ fn get_properties(mut node_ref: Option<kuchiki::NodeRef>) -> Props {
             last_was_br = &element.name.local == "br";
         } else {
             // The node is text
+            let text = node.text_contents();
+            let text = text.trim();
+            if let Some(text) = text.strip_suffix(':') {
+                // Move any existing values to the map
+                if !name.is_empty() && !values.is_empty() {
+                    map.insert(name, values.drain(..).collect());
+                }
 
-            // Move any existing values to the map
-            if !name.is_empty() && !values.is_empty() {
-                map.insert(name, values.drain(..).collect());
+                // This is the property name
+                name = text.to_string();
+            } else {
+                // This is a continuation of a property value
+                values.push(text.to_string());
             }
-
-            // This is the property name
-            name = node.text_contents().trim().to_string();
-            name.retain(|ch| ch != ':');
         }
         node_ref = node.next_sibling();
     }

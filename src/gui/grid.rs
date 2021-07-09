@@ -84,12 +84,16 @@ impl<'setup> SetupGrid<'setup> {
                 let mut colors = colors.iter().cloned().cycle();
 
                 for setup in setups {
-                    let values = setup
-                        .get(prop_group)
-                        .unwrap()
-                        .get(prop_name)
-                        .unwrap()
-                        .join(", ");
+                    let values = setup.get(prop_group).unwrap().get(prop_name).unwrap();
+                    let separator = if values
+                        .iter()
+                        .all(|v| v.starts_with(|ch: char| ch.is_ascii_digit()))
+                    {
+                        ", "
+                    } else {
+                        " "
+                    };
+                    let values = values.join(separator);
 
                     // Calculate width of `values`
                     let color = colors.next().unwrap_or_else(|| ui.visuals().text_color());
