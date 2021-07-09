@@ -263,7 +263,7 @@ impl Framework {
 
     /// Update the setups path on the config.
     pub(crate) fn update_setups_path(&mut self, setups_path: PathBuf) {
-        self.gui.config.update_setups_path(setups_path);
+        self.gui.update_setups_path(setups_path);
     }
 
     /// Add an error message window to the GUI.

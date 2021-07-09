@@ -8,6 +8,7 @@ use crate::str_ext::Ellipsis;
 use copypasta::{ClipboardContext, ClipboardProvider};
 use egui::{CtxRef, Widget};
 use std::collections::{HashMap, VecDeque};
+use std::path::Path;
 use std::time::{Duration, Instant};
 use winit::event_loop::EventLoopProxy;
 
@@ -140,6 +141,20 @@ impl Gui {
         // Draw the windows (if requested by the user)
         self.about_window(ctx, enabled);
         self.prefs_window(ctx, enabled, window);
+    }
+
+    /// Update setups export path.
+    pub(crate) fn update_setups_path<P: AsRef<Path>>(&mut self, setups_path: P) {
+        self.config.update_setups_path(setups_path);
+        self.setups = Setups::new(&self.config);
+        self.clear_filters();
+    }
+
+    /// Clear track, car, and setup filters.
+    fn clear_filters(&mut self) {
+        self.selected_track_name = None;
+        self.selected_car_name = None;
+        self.selected_setups.clear();
     }
 
     /// Show track selection drop-down box.
