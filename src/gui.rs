@@ -6,6 +6,7 @@ use crate::framework::UserEvent;
 use crate::setup::{Setup, Setups};
 use crate::str_ext::Ellipsis;
 use copypasta::{ClipboardContext, ClipboardProvider};
+use egui::widgets::color_picker::{color_edit_button_srgba, Alpha};
 use egui::{CtxRef, Widget};
 use std::collections::{HashMap, VecDeque};
 use std::path::Path;
@@ -323,6 +324,7 @@ impl Gui {
             .default_pos((150.0, 150.0))
             .fixed_size((500.0, 200.0))
             .show(ctx, |ui| {
+                // Theme selection
                 ui.horizontal(|ui| {
                     let current_theme = *self.config.theme();
 
@@ -344,6 +346,7 @@ impl Gui {
                         });
                 });
 
+                // Setup exports path selection
                 ui.horizontal(|ui| {
                     let setups_path = self.config.get_setups_path();
                     let label = setups_path.to_string_lossy().ellipsis(50);
@@ -369,6 +372,40 @@ impl Gui {
                                 .send_event(UserEvent::SetupPath(choice))
                                 .expect("Event loop must exist");
                         });
+                    }
+                });
+
+                // Color choices
+                ui.separator();
+                ui.label("Column colors:");
+                ui.horizontal_wrapped(|ui| {
+                    let colors = self.config.mut_colors();
+                    let mut changed = false;
+                    let mut to_delete = None;
+
+                    for (i, color) in colors.iter_mut().enumerate() {
+                        let old_color = *color;
+
+                        if color_edit_button_srgba(ui, color, Alpha::Opaque)
+                            .on_hover_text("Right-click to remove")
+                            .secondary_clicked()
+                        {
+                            to_delete = Some(i);
+                        }
+
+                        changed |= *color != old_color;
+                    }
+
+                    let add_clicked = ui.button("Add").clicked();
+                    if add_clicked {
+                        colors.push(ui.visuals().text_color());
+                    } else if let Some(i) = to_delete {
+                        colors.remove(i);
+                    }
+
+                    // Update colors in the config TOML doc
+                    if changed || add_clicked || to_delete.is_some() {
+                        self.config.update_colors();
                     }
                 });
             });

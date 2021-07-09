@@ -249,9 +249,26 @@ impl Config {
         &self.cars
     }
 
-    // Get user's color-coding choices.
+    /// Get user's color-coding choices.
     pub(crate) fn colors(&self) -> Vec<egui::Color32> {
         self.colors.clone()
+    }
+
+    /// Modify user's color-coding choices.
+    pub(crate) fn mut_colors(&mut self) -> &mut Vec<egui::Color32> {
+        &mut self.colors
+    }
+
+    /// Update colors in TOML document.
+    pub(crate) fn update_colors(&mut self) {
+        let mut colors = toml_edit::Array::default();
+
+        for color in &self.colors {
+            let color = format!("#{:02x}{:02x}{:02x}", color.r(), color.g(), color.b());
+            colors.push(color).unwrap();
+        }
+
+        self.doc["config"]["colors"] = toml_edit::value(colors);
     }
 
     /// Load track and car info from config.
