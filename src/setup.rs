@@ -233,7 +233,8 @@ fn setup_from_html<P: AsRef<Path>>(
         let mut group_name = group.text_contents().capitalize_words().to_string();
         group_name.retain(|ch| ch != ':');
 
-        setup.insert(group_name, get_properties(group.as_node().next_sibling()));
+        let props = get_properties(group.as_node().next_sibling()).into_iter();
+        setup.entry(group_name).or_default().extend(props);
     }
 
     Ok((track_name, car_name, setup))
