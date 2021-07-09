@@ -261,7 +261,7 @@ fn get_properties(mut node_ref: Option<kuchiki::NodeRef>) -> Props {
                 }
 
                 // This is a property value
-                values.push(node.text_contents());
+                values.push(node.text_contents().trim().to_string());
             }
             last_was_br = &element.name.local == "br";
         } else {
