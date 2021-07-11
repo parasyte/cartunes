@@ -16,6 +16,10 @@ colors = [
     "#915e17", # Orange
 ]
 
+# The background colors show how values are increased or decreased.
+background_decrease = "#ff5050"
+background_increase = "#50ff50"
+
 [window]
 
 

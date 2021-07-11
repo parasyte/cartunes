@@ -130,11 +130,12 @@ impl Gui {
 
             // Draw setup filters
             let colors = self.config.colors();
+            let diff_colors = self.config.diff_colors();
             let (car_name, setups) = self.setup_selection(ui, &colors);
             if !setups.is_empty() {
                 // Draw setup properties grid
                 egui::containers::ScrollArea::auto_sized().show(ui, |ui| {
-                    SetupGrid::new(ui, &setups, &colors).show(ui, car_name);
+                    SetupGrid::new(ui, &setups, &colors, diff_colors).show(ui, car_name);
                 });
             }
         });
@@ -405,6 +406,19 @@ impl Gui {
 
                     // Update colors in the config TOML doc
                     if changed || add_clicked || to_delete.is_some() {
+                        self.config.update_colors();
+                    }
+                });
+
+                ui.label("Diff colors:");
+                ui.horizontal_wrapped(|ui| {
+                    let colors = self.config.mut_diff_colors();
+                    let old_colors = *colors;
+
+                    color_edit_button_srgba(ui, &mut colors.0, Alpha::Opaque);
+                    color_edit_button_srgba(ui, &mut colors.1, Alpha::Opaque);
+
+                    if *colors != old_colors {
                         self.config.update_colors();
                     }
                 });

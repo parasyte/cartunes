@@ -17,7 +17,7 @@ struct Group<'setup> {
     /// Group name is shown in a collapsible header.
     name: &'setup str,
 
-    /// The matrix is row-major
+    /// The matrix is row-major.
     ///
     /// I.e. the inner vector is a list of columns with the same length as `Grid::columns`.
     matrix: Vec<Vec<Label>>,
@@ -27,6 +27,9 @@ struct Group<'setup> {
 struct Label {
     /// Make the label pretty.
     color: egui::Color32,
+
+    /// Diffs get a background color.
+    background: Option<egui::Color32>,
 
     /// Container for the label text and style.
     galley: Arc<Galley>,
@@ -38,6 +41,7 @@ impl<'setup> SetupGrid<'setup> {
         ui: &egui::Ui,
         setups: &'setup [&'setup Setup],
         colors: &[egui::Color32],
+        diff_colors: (egui::Color32, egui::Color32),
     ) -> Self {
         // Gather groups
         let mut groups = intersect_keys(setups);
@@ -78,10 +82,12 @@ impl<'setup> SetupGrid<'setup> {
 
                 columns.push(Label {
                     color: ui.visuals().text_color(),
+                    background: None,
                     galley,
                 });
 
                 let mut colors = colors.iter().cloned().cycle();
+                let mut first_value = None;
 
                 for setup in setups {
                     let values = setup.get(prop_group).unwrap().get(prop_name).unwrap();
@@ -93,16 +99,32 @@ impl<'setup> SetupGrid<'setup> {
                     } else {
                         " "
                     };
-                    let values = values.join(separator);
+                    let value = values.join(separator);
 
-                    // Calculate width of `values`
+                    // Compute diff between `value` and first column
                     let color = colors.next().unwrap_or_else(|| ui.visuals().text_color());
-                    let galley = ui.fonts().layout_no_wrap(egui::TextStyle::Body, values);
+                    let (color, background) = if let Some(first_value) = first_value.as_ref() {
+                        use std::cmp::Ordering;
+                        match value.cmp(first_value) {
+                            Ordering::Less => (ui.visuals().text_color(), Some(diff_colors.0)),
+                            Ordering::Greater => (ui.visuals().text_color(), Some(diff_colors.1)),
+                            Ordering::Equal => (color, None),
+                        }
+                    } else {
+                        first_value = Some(value.clone());
+                        (color, None)
+                    };
+
+                    let galley = ui.fonts().layout_no_wrap(egui::TextStyle::Body, value);
                     let width = galley.size.x + ui.spacing().item_spacing.x * 2.0;
                     output.columns[i] = output.columns[i].max(width);
                     i += 1;
 
-                    columns.push(Label { color, galley });
+                    columns.push(Label {
+                        color,
+                        background,
+                        galley,
+                    });
                 }
 
                 group.matrix.push(columns);
@@ -116,8 +138,6 @@ impl<'setup> SetupGrid<'setup> {
 
     /// Draw the grid to the provided `Ui`.
     pub(crate) fn show(self, ui: &mut egui::Ui, car_name: &str) {
-        // TODO: Colors
-
         let column_widths = &self.columns;
 
         // Draw headers
@@ -134,6 +154,18 @@ impl<'setup> SetupGrid<'setup> {
                                 let size = egui::Vec2::new(column_widths[i], label.galley.size.y);
                                 let (rect, _) = ui.allocate_exact_size(size, egui::Sense::hover());
 
+                                // Draw optional background color
+                                if let Some(background) = label.background {
+                                    let fill = egui::Rgba::from(ui.visuals().code_bg_color);
+                                    let background = egui::Rgba::from(background);
+                                    let color = egui::Color32::from(background * fill);
+                                    let rect =
+                                        egui::Rect::from_min_size(rect.min, label.galley.size);
+
+                                    ui.painter().rect_filled(rect.expand(3.0), 4.0, color);
+                                }
+
+                                // Draw text
                                 ui.painter().galley(rect.min, label.galley, label.color);
                             }
                         });

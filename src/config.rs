@@ -54,8 +54,11 @@ pub(crate) struct Config {
     /// User's theme choice.
     theme: UserTheme,
 
-    // User's color-coding choices.
+    /// User's color-coding choices.
     colors: Vec<egui::Color32>,
+
+    /// User's diff color choices.
+    diff_colors: (egui::Color32, egui::Color32),
 
     /// Map raw track IDs to unique track IDs.
     track_ids: PatriciaSet,
@@ -111,6 +114,7 @@ impl Config {
             min_size,
             theme: UserTheme::Auto,
             colors: Vec::new(),
+            diff_colors: (egui::Color32::TRANSPARENT, egui::Color32::TRANSPARENT),
             track_ids: PatriciaSet::new(),
             tracks: HashMap::new(),
             cars: HashMap::new(),
@@ -269,6 +273,29 @@ impl Config {
         }
 
         self.doc["config"]["colors"] = toml_edit::value(colors);
+
+        self.doc["config"]["background_decrease"] = toml_edit::value(format!(
+            "#{:02x}{:02x}{:02x}",
+            self.diff_colors.0.r(),
+            self.diff_colors.0.g(),
+            self.diff_colors.0.b()
+        ));
+        self.doc["config"]["background_increase"] = toml_edit::value(format!(
+            "#{:02x}{:02x}{:02x}",
+            self.diff_colors.1.r(),
+            self.diff_colors.1.g(),
+            self.diff_colors.1.b()
+        ));
+    }
+
+    /// Get user's diff color choices.
+    pub(crate) fn diff_colors(&self) -> (egui::Color32, egui::Color32) {
+        self.diff_colors
+    }
+
+    /// Modify user's diff color choices.
+    pub(crate) fn mut_diff_colors(&mut self) -> &mut (egui::Color32, egui::Color32) {
+        &mut self.diff_colors
     }
 
     /// Load track and car info from config.
@@ -303,37 +330,42 @@ impl Config {
         Ok(())
     }
 
-    /// Load column colors from config.
+    /// Load column colors and background colors from config.
     fn load_colors(&mut self) -> Result<(), Error> {
+        let mut parsed = Vec::new();
         let colors = &self.doc["config"]["colors"];
         if let Some(colors) = colors.as_array() {
-            let mut parsed = Vec::new();
-
             for (i, color) in colors.iter().enumerate() {
                 let color = color
                     .as_str()
                     .ok_or_else(|| Error::type_error(&format!("config.colors[{}]", i), "string"))?;
+                let color = color_from_str(color)
+                    .map_err(|_| Error::Color(format!("config.colors[{}]", i)))?;
 
-                // Validate color format. Require HTML hex `#rrggbb` for convenience
-                let mut validator = color.chars();
-                if color.len() != 7
-                    || validator.next().unwrap() != '#'
-                    || validator.any(|ch| !ch.is_ascii_hexdigit())
-                {
-                    return Err(Error::Color(format!("config.colors[{}]", i)));
-                }
-
-                let r = u8::from_str_radix(&color[1..3], 16).unwrap();
-                let g = u8::from_str_radix(&color[3..5], 16).unwrap();
-                let b = u8::from_str_radix(&color[5..7], 16).unwrap();
-
-                parsed.push(egui::Color32::from_rgb(r, g, b));
+                parsed.push(color);
             }
-
-            // If all colors are parsed successfully, replace the entire config
-            self.colors = parsed;
         } else if !colors.is_none() {
             return Err(Error::type_error("config.colors", "array"));
+        }
+
+        // Parse background colors
+        let mut background = Vec::new();
+        for name in &["background_decrease", "background_increase"] {
+            let color = self.doc["config"][name].as_str();
+            if let Some(color) = color {
+                let color =
+                    color_from_str(color).map_err(|_| Error::Color(format!("config.{}", name)))?;
+
+                background.push(color);
+            }
+        }
+
+        // If all colors are parsed successfully, replace the entire config
+        if !parsed.is_empty() {
+            self.colors = parsed;
+        }
+        if background.len() == 2 {
+            self.diff_colors = (background[0], background[1]);
         }
 
         Ok(())
@@ -423,6 +455,23 @@ impl std::fmt::Display for UserTheme {
         };
         write!(f, "{}", text)
     }
+}
+
+fn color_from_str(color: &str) -> Result<egui::Color32, ()> {
+    // Validate color format. Require HTML hex `#rrggbb` for convenience
+    let mut validator = color.chars();
+    if color.len() != 7
+        || validator.next().unwrap() != '#'
+        || validator.any(|ch| !ch.is_ascii_hexdigit())
+    {
+        return Err(());
+    }
+
+    let r = u8::from_str_radix(&color[1..3], 16).unwrap();
+    let g = u8::from_str_radix(&color[3..5], 16).unwrap();
+    let b = u8::from_str_radix(&color[5..7], 16).unwrap();
+
+    Ok(egui::Color32::from_rgb(r, g, b))
 }
 
 #[cfg(test)]
