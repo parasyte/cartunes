@@ -333,10 +333,10 @@ fn create_fonts(theme: Theme) -> egui::FontDefinitions {
         .fonts_for_family
         .get_mut(&egui::FontFamily::Proportional)
     {
-        font.push(match theme {
+        font[0] = match theme {
             Theme::Dark => "Ubuntu-Light".to_owned(),
             Theme::Light => "Ubuntu-Regular".to_owned(),
-        });
+        };
     }
 
     if let Some(mut heading) = fonts.family_and_size.get_mut(&egui::TextStyle::Heading) {
@@ -356,6 +356,7 @@ fn create_style(theme: Theme) -> egui::Style {
 
             // The default light theme has grey fonts. We want solid black.
             visuals.widgets.noninteractive.fg_stroke.color = egui::Color32::BLACK;
+            visuals.widgets.inactive.fg_stroke.color = egui::Color32::from_gray(50);
 
             visuals
         }
