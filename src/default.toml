@@ -23,9 +23,9 @@ background_increase = "#50ff50"
 [window]
 
 
-# Below are the track and car names that will be displayed in the UI and CSV exports. You can update
-# these settings to change the appearance, or add new ones without the need for an application
-# upgrade when new tracks and cars are added to iRacing.
+# Below are the track and car names that will be displayed in the UI. You can update these settings
+# to change the appearance, or add new ones without the need for an application upgrade when new
+# tracks and cars are added to iRacing.
 
 # Unique IDs for tracks are constructed by taking directory names from the `{setups_path}/lapfiles/`
 # directory. Use the longest common prefix for the track (without the track configuration
