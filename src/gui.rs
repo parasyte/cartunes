@@ -103,8 +103,6 @@ impl Gui {
             egui::menu::bar(ui, |ui| {
                 egui::menu::menu(ui, "File", |ui| {
                     ui.set_min_width(200.0);
-                    if ui.button("Export...").clicked() {}
-                    ui.separator();
                     if ui.button("Preferences").clicked() {
                         self.preferences = true;
                     }
