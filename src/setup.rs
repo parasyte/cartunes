@@ -1,9 +1,10 @@
 //! Parsers and internal representations for iRacing setup exports.
 
 use crate::config::Config;
+use crate::gui::ShowWarning;
 use crate::str_ext::Capitalize;
 use kuchiki::traits::TendrilSink;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
@@ -102,8 +103,11 @@ impl Error {
 ///
 /// See the [iRacing User Manuals](https://www.iracing.com/user-manuals/) for technical details of
 /// individual setup properties for each car.
-#[derive(Debug, Default)]
-pub(crate) struct Setups(Tracks);
+#[derive(Default)]
+pub(crate) struct Setups {
+    tracks: Tracks,
+    pub(crate) warnings: VecDeque<ShowWarning>,
+}
 
 type Tracks = HashMap<String, Cars>;
 type Cars = HashMap<String, Vec<(String, Setup)>>;
@@ -124,15 +128,31 @@ impl Setups {
 
         let mut setups = Self::default();
         let path = config.get_setups_path();
-        // XXX: Maybe add support for warning messages to the GUI instead of ignoring all errors?
         let walker = WalkDir::new(path)
             .into_iter()
-            .filter_entry(|entry| entry.file_type().is_dir() || is_html(entry))
-            .filter_map(|entry| entry.ok());
+            .filter_entry(|entry| entry.file_type().is_dir() || is_html(entry));
 
         for entry in walker {
-            if entry.file_type().is_file() {
-                setups.load_file(entry.path(), config).ok();
+            match entry {
+                Err(err) => {
+                    setups.warnings.push_front(ShowWarning::new(
+                        err,
+                        "Encountered an error while looking for all exports.",
+                    ));
+                }
+                Ok(entry) => {
+                    if entry.file_type().is_file() {
+                        if let Err(err) = setups.load_file(entry.path(), config) {
+                            setups.warnings.push_front(ShowWarning::new(
+                                err,
+                                format!(
+                                    "Error while loading HTML setup export `{}`",
+                                    entry.path().to_string_lossy(),
+                                ),
+                            ));
+                        }
+                    }
+                }
             }
         }
 
@@ -141,7 +161,7 @@ impl Setups {
 
     /// Get a reference to the tracks tree.
     pub(crate) fn tracks(&self) -> &Tracks {
-        &self.0
+        &self.tracks
     }
 
     /// Load an HTML export file into the `Setups` tree.
@@ -153,7 +173,7 @@ impl Setups {
             .file_stem()
             .map(|s| s.to_string_lossy().to_string())
             .unwrap_or_else(|| car_name.clone());
-        let cars = self.0.entry(track_name).or_default();
+        let cars = self.tracks.entry(track_name).or_default();
         let setups = cars.entry(car_name).or_default();
         setups.push((file_name, setup));
 

@@ -41,6 +41,9 @@ pub(crate) struct Gui {
     /// Show the "Preferences..." window.
     preferences: bool,
 
+    /// Show the "Warning" window.
+    warning: bool,
+
     /// Show an error message.
     show_errors: VecDeque<ShowError>,
 
@@ -70,6 +73,15 @@ pub(crate) struct ErrorButton {
     action: Box<dyn FnOnce()>,
 }
 
+/// Holds state for a warning message to show to the user.
+pub(crate) struct ShowWarning {
+    /// The actual warning message.
+    warning: Box<dyn std::error::Error>,
+
+    /// Provide some extra context to the user.
+    context: String,
+}
+
 impl Gui {
     /// Create a GUI.
     pub(crate) fn new(
@@ -87,6 +99,7 @@ impl Gui {
             event_loop_proxy,
             about: false,
             preferences: false,
+            warning: false,
             show_errors,
             show_tooltips: HashMap::new(),
         }
@@ -98,7 +111,7 @@ impl Gui {
         let enabled = self.error_window(ctx);
 
         // Draw the menu bar
-        egui::TopBottomPanel::top("menubar_container").show(ctx, |ui| {
+        egui::TopBottomPanel::top("menubar-container").show(ctx, |ui| {
             ui.set_enabled(enabled);
             egui::menu::bar(ui, |ui| {
                 egui::menu::menu(ui, "File", |ui| {
@@ -138,9 +151,40 @@ impl Gui {
             }
         });
 
+        // Draw the footer
+        if !self.setups.warnings.is_empty() {
+            egui::TopBottomPanel::bottom("footer-container").show(ctx, |ui| {
+                let rect = ui
+                    .horizontal(|ui| {
+                        let rect = ui.available_rect_before_wrap();
+                        let size = ui.spacing().interact_size.y;
+                        let center = egui::Vec2::splat(size / 2.0);
+                        let yellow = egui::Color32::from_rgb(210, 210, 40);
+                        ui.painter()
+                            .circle_filled(rect.min + center, center.x - 3.0, yellow);
+
+                        ui.add_space(size + ui.spacing().icon_spacing * 2.0);
+
+                        let len = self.setups.warnings.len();
+                        ui.label(format!("{} Warning{}", len, if len > 1 { "s" } else { "" }));
+                    })
+                    .response
+                    .rect;
+                let response =
+                    ui.interact(rect, egui::Id::new("warnings-button"), egui::Sense::click());
+
+                if response.clicked() {
+                    self.warning = true;
+                }
+            });
+        }
+
         // Draw the windows (if requested by the user)
         self.about_window(ctx, enabled);
         self.prefs_window(ctx, enabled, window);
+        if self.warning {
+            self.warning_window(ctx, enabled);
+        }
     }
 
     /// Update setups export path.
@@ -461,7 +505,7 @@ impl Gui {
 
                     ui.separator();
                     ui.horizontal(|ui| {
-                        let tooltip_id = egui::Id::new("error_copypasta");
+                        let tooltip_id = egui::Id::new("error-copypasta");
 
                         if ui.button("Copy to Clipboard").clicked() {
                             let mut copied = false;
@@ -472,8 +516,6 @@ impl Gui {
                             let label = if copied {
                                 "Copied!"
                             } else {
-                                // XXX: Maybe add a new error message? The current error would
-                                // have to be dismissed to see it!
                                 "Sorry, but the clipboard isn't working..."
                             };
 
@@ -508,6 +550,68 @@ impl Gui {
         } else {
             true
         }
+    }
+
+    /// Show warning window.
+    fn warning_window(&mut self, ctx: &egui::CtxRef, enabled: bool) {
+        let mut window_open = self.warning;
+        let warning = self.setups.warnings.pop_back();
+        if let Some(warning) = warning {
+            let width = 500.0;
+            let height = 175.0;
+            let yellow = egui::Color32::from_rgb(210, 210, 40);
+
+            egui::Window::new("Warning")
+                .open(&mut window_open)
+                .collapsible(false)
+                .default_pos((120.0, 120.0))
+                .fixed_size((width, height))
+                .show(ctx, |ui| {
+                    ui.set_enabled(enabled);
+                    ui.label(&warning.context);
+
+                    egui::ScrollArea::from_max_height(height).show(ui, |ui| {
+                        egui::TextEdit::multiline(&mut warning.warning.to_string())
+                            .enabled(false)
+                            .text_style(egui::TextStyle::Monospace)
+                            .text_color(yellow)
+                            .desired_width(width)
+                            .desired_rows(10)
+                            .ui(ui);
+                    });
+
+                    ui.separator();
+                    ui.horizontal(|ui| {
+                        let tooltip_id = egui::Id::new("warning-copypasta");
+
+                        if ui.button("Copy to Clipboard").clicked() {
+                            let mut copied = false;
+                            if let Ok(mut clipboard) = ClipboardContext::new() {
+                                copied =
+                                    clipboard.set_contents(warning.warning.to_string()).is_ok();
+                            }
+
+                            let label = if copied {
+                                "Copied!"
+                            } else {
+                                "Sorry, but the clipboard isn't working..."
+                            };
+
+                            self.add_tooltip(tooltip_id, label);
+                        }
+
+                        // Show the copy button tooltip for 3 seconds
+                        self.tooltip(ctx, ui, tooltip_id, Duration::from_secs(3));
+                    });
+                });
+
+            if window_open {
+                // Put the warning back
+                self.setups.warnings.push_back(warning);
+            }
+        }
+
+        self.warning = window_open;
     }
 
     /// Add a tooltip to the GUI.
@@ -582,6 +686,20 @@ impl ErrorButton {
         Self {
             label: label.to_owned(),
             action: Box::new(action),
+        }
+    }
+}
+
+impl ShowWarning {
+    /// Create a warning message to be shown to the user.
+    pub(crate) fn new<E, S>(warning: E, context: S) -> Self
+    where
+        E: Into<Box<dyn std::error::Error>>,
+        S: Into<String>,
+    {
+        Self {
+            warning: warning.into(),
+            context: context.into(),
         }
     }
 }
