@@ -160,19 +160,25 @@ impl Gui {
                         let size = ui.spacing().interact_size.y;
                         let center = egui::Vec2::splat(size / 2.0);
                         let yellow = egui::Color32::from_rgb(210, 210, 40);
+                        let len = self.setups.warnings.len();
+
+                        ui.spacing_mut().item_spacing.x /= 2.0;
                         ui.painter()
                             .circle_filled(rect.min + center, center.x - 3.0, yellow);
-
-                        ui.add_space(size + ui.spacing().icon_spacing * 2.0);
-
-                        let len = self.setups.warnings.len();
+                        ui.add_space(size);
                         ui.label(format!("{} Warning{}", len, if len > 1 { "s" } else { "" }));
+                        ui.add_space(0.0);
                     })
                     .response
                     .rect;
                 let response =
                     ui.interact(rect, egui::Id::new("warnings-button"), egui::Sense::click());
 
+                if response.hovered() {
+                    let hovered = ui.visuals().widgets.hovered;
+                    ui.painter()
+                        .rect_stroke(rect, hovered.corner_radius, hovered.bg_stroke);
+                }
                 if response.clicked() {
                     self.warning = true;
                 }
