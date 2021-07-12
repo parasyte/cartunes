@@ -325,19 +325,17 @@ fn create_fonts(theme: Theme) -> egui::FontDefinitions {
     );
 
     // Set font families
-    if let Some(font) = fonts.fonts_for_family.get_mut(&egui::FontFamily::Monospace) {
-        font.push("ProggyClean".to_owned());
-        font.push("Ubuntu-Light".to_owned());
-    }
-    if let Some(font) = fonts
-        .fonts_for_family
-        .get_mut(&egui::FontFamily::Proportional)
-    {
-        font[0] = match theme {
+    fonts.fonts_for_family.insert(
+        egui::FontFamily::Monospace,
+        vec!["ProggyClean".to_owned(), "Ubuntu-Regular".to_owned()],
+    );
+    fonts.fonts_for_family.insert(
+        egui::FontFamily::Proportional,
+        vec![match theme {
             Theme::Dark => "Ubuntu-Light".to_owned(),
             Theme::Light => "Ubuntu-Regular".to_owned(),
-        };
-    }
+        }],
+    );
 
     if let Some(mut heading) = fonts.family_and_size.get_mut(&egui::TextStyle::Heading) {
         // The default heading size is WAY too big.
