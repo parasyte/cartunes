@@ -559,7 +559,7 @@ impl Gui {
         if let Some(warning) = warning {
             let width = 500.0;
             let height = 175.0;
-            let yellow = egui::Color32::from_rgb(210, 210, 40);
+            let yellow = egui::Color32::from_rgb(156, 156, 40);
 
             egui::Window::new("Warning")
                 .open(&mut window_open)
