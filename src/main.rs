@@ -24,6 +24,11 @@ use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::WindowBuilder;
 use winit_input_helper::WinitInputHelper;
 
+#[cfg(windows)]
+use winit::platform::windows::IconExtWindows;
+#[cfg(windows)]
+use winit::window::Icon;
+
 mod config;
 mod framework;
 mod gpu;
@@ -55,6 +60,21 @@ fn create_window() -> Result<(EventLoop<UserEvent>, winit::window::Window, Gpu, 
         }
     } else {
         WindowBuilder::new()
+    };
+
+    let window_builder = {
+        #[cfg(windows)]
+        {
+            // Magic number from cartunes.rc
+            const ICON_RESOURCE_ID: u16 = 2;
+
+            window_builder.with_window_icon(Some(
+                Icon::from_resource(ICON_RESOURCE_ID, None).expect("Unable to load icon"),
+            ))
+        }
+
+        #[cfg(not(windows))]
+        window_builder
     };
 
     let event_loop = EventLoop::with_user_event();

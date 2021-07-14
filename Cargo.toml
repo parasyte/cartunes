@@ -10,6 +10,10 @@ readme = "README.md"
 license = "MIT"
 resolver = "2"
 
+[features]
+default = ["optimize"]
+optimize = ["log/release_max_level_warn"]
+
 [dependencies]
 copypasta = "0.7"
 egui = { version = "0.13", default-features = false, features = ["single_threaded"] }
@@ -40,6 +44,5 @@ version = "0.8"
 default-features = false
 features = ["atty", "humantime", "termcolor"]
 
-[features]
-default = ["optimize"]
-optimize = ["log/release_max_level_warn"]
+[target.'cfg(windows)'.build-dependencies]
+embed-resource = "1.6"
