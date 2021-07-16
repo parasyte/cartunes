@@ -488,8 +488,8 @@ impl Gui {
         let err = self.show_errors.pop_back();
         if let Some(err) = err {
             let mut result = true;
-            let width = 500.0;
-            let height = 175.0;
+            let width = 550.0;
+            let height = 185.0;
             let red = egui::Color32::from_rgb(210, 40, 40);
 
             egui::Window::new("Error")
@@ -563,8 +563,8 @@ impl Gui {
         let mut window_open = self.warning;
         let warning = self.setups.warnings.pop_back();
         if let Some(warning) = warning {
-            let width = 500.0;
-            let height = 175.0;
+            let width = 550.0;
+            let height = 185.0;
             let yellow = egui::Color32::from_rgb(156, 156, 40);
 
             egui::Window::new("Warning")

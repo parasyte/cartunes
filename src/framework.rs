@@ -7,6 +7,7 @@ use directories::ProjectDirs;
 use egui::ClippedMesh;
 use egui_wgpu_backend::{RenderPass, ScreenDescriptor};
 use egui_winit_platform::{Platform, PlatformDescriptor};
+use font_loader::system_fonts::{self, FontPropertyBuilder};
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::path::PathBuf;
@@ -73,7 +74,7 @@ impl Framework {
     ) -> Self {
         let width = size.width;
         let height = size.height;
-        let font_definitions = create_fonts(theme);
+        let font_definitions = create_fonts();
         let style = create_style(theme);
         let platform = Platform::new(PlatformDescriptor {
             physical_width: width,
@@ -278,20 +279,6 @@ impl Framework {
         if let Some(theme) = self.theme.take() {
             // Set the style
             ctx.set_style(create_style(theme));
-
-            // Set the appropriate font weight for the theme.
-            // The best choice was found experimentally.
-            let mut fonts = ctx.fonts().definitions().clone();
-            if let Some(font) = fonts
-                .fonts_for_family
-                .get_mut(&egui::FontFamily::Proportional)
-            {
-                font[0] = match theme {
-                    Theme::Dark => "Ubuntu-Light".to_owned(),
-                    Theme::Light => "Ubuntu-Regular".to_owned(),
-                };
-            }
-            ctx.set_fonts(fonts);
         }
     }
 }
@@ -307,35 +294,38 @@ fn config_path() -> PathBuf {
 }
 
 /// Create fonts for egui from the embedded TTFs.
-fn create_fonts(theme: Theme) -> egui::FontDefinitions {
+fn create_fonts() -> egui::FontDefinitions {
     let mut fonts = egui::FontDefinitions::default();
 
     // Add font data
-    fonts.font_data.insert(
-        "ProggyClean".to_owned(),
-        Cow::Borrowed(include_bytes!("../fonts/ProggyClean.ttf")),
-    );
-    fonts.font_data.insert(
-        "Ubuntu-Regular".to_owned(),
-        Cow::Borrowed(include_bytes!("../fonts/Ubuntu-Regular.ttf")),
-    );
-    fonts.font_data.insert(
-        "Ubuntu-Light".to_owned(),
-        Cow::Borrowed(include_bytes!("../fonts/Ubuntu-Light.ttf")),
-    );
+    let props = FontPropertyBuilder::new().monospace().build();
+    let font = system_fonts::get(&props)
+        .expect("Unable to find a monospace font")
+        .0;
+    fonts
+        .font_data
+        .insert("MonoSpace".to_owned(), Cow::from(font));
+
+    let props = FontPropertyBuilder::new().family("sans-serif").build();
+    let font = system_fonts::get(&props)
+        .expect("Unable to find a sans-serif font")
+        .0;
+    fonts
+        .font_data
+        .insert("SansSerif".to_owned(), Cow::from(font));
 
     // Set font families
-    fonts.fonts_for_family.insert(
-        egui::FontFamily::Monospace,
-        vec!["ProggyClean".to_owned(), "Ubuntu-Regular".to_owned()],
-    );
-    fonts.fonts_for_family.insert(
-        egui::FontFamily::Proportional,
-        vec![match theme {
-            Theme::Dark => "Ubuntu-Light".to_owned(),
-            Theme::Light => "Ubuntu-Regular".to_owned(),
-        }],
-    );
+    fonts
+        .fonts_for_family
+        .insert(egui::FontFamily::Monospace, vec!["MonoSpace".to_owned()]);
+    fonts
+        .fonts_for_family
+        .insert(egui::FontFamily::Proportional, vec!["SansSerif".to_owned()]);
+
+    if let Some(mut monospace) = fonts.family_and_size.get_mut(&egui::TextStyle::Monospace) {
+        // The default monospace size is too small.
+        monospace.1 = 14.0;
+    }
 
     if let Some(mut heading) = fonts.family_and_size.get_mut(&egui::TextStyle::Heading) {
         // The default heading size is WAY too big.
