@@ -308,6 +308,10 @@ fn create_fonts() -> egui::FontDefinitions {
 
     let props = FontPropertyBuilder::new().family("sans-serif").build();
     let font = system_fonts::get(&props)
+        .or_else(|| {
+            let props = FontPropertyBuilder::new().family("Helvetica Neue").build();
+            system_fonts::get(&props)
+        })
         .expect("Unable to find a sans-serif font")
         .0;
     fonts

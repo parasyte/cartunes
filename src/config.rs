@@ -148,7 +148,6 @@ impl Config {
     ) -> Result<Option<Self>, Error> {
         let doc_path = doc_path.as_ref().to_path_buf();
         if !doc_path.exists() {
-            println!("Doesn't exist!");
             return Ok(None);
         }
 
@@ -430,6 +429,7 @@ impl UserTheme {
     ///
     /// When the `UserTheme` value is set to `Auto`, the `window` reference will be used to select
     /// the theme based on OS preferences.
+    #[allow(unused_variables)]
     pub(crate) fn as_winit_theme(&self, window: &winit::window::Window) -> Theme {
         match self {
             Self::Auto => {
