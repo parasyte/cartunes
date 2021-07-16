@@ -129,28 +129,6 @@ impl Gui {
             });
         });
 
-        // Draw the main content area
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.set_enabled(enabled);
-
-            // Draw car filters
-            ui.horizontal(|ui| {
-                self.track_selection(ui);
-                self.car_selection(ui);
-            });
-
-            // Draw setup filters
-            let colors = self.config.colors();
-            let diff_colors = self.config.diff_colors();
-            let (car_name, setups) = self.setup_selection(ui, &colors);
-            if !setups.is_empty() {
-                // Draw setup properties grid
-                egui::containers::ScrollArea::auto_sized().show(ui, |ui| {
-                    SetupGrid::new(ui, &setups, &colors, diff_colors).show(ui, car_name);
-                });
-            }
-        });
-
         // Draw the footer
         if !self.setups.warnings.is_empty() {
             egui::TopBottomPanel::bottom("footer-container").show(ctx, |ui| {
@@ -184,6 +162,28 @@ impl Gui {
                 }
             });
         }
+
+        // Draw the main content area
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.set_enabled(enabled);
+
+            // Draw car filters
+            ui.horizontal(|ui| {
+                self.track_selection(ui);
+                self.car_selection(ui);
+            });
+
+            // Draw setup filters
+            let colors = self.config.colors();
+            let diff_colors = self.config.diff_colors();
+            let (car_name, setups) = self.setup_selection(ui, &colors);
+            if !setups.is_empty() {
+                // Draw setup properties grid
+                egui::containers::ScrollArea::auto_sized().show(ui, |ui| {
+                    SetupGrid::new(ui, &setups, &colors, diff_colors).show(ui, car_name);
+                });
+            }
+        });
 
         // Draw the windows (if requested by the user)
         self.about_window(ctx, enabled);
