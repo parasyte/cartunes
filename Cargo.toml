@@ -41,7 +41,7 @@ default-features = false
 features = ["clipboard", "webbrowser"]
 
 [dependencies.env_logger]
-version = "0.8"
+version = "0.9"
 default-features = false
 features = ["atty", "humantime", "termcolor"]
 
