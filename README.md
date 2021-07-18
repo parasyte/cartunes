@@ -1,3 +1,5 @@
+[![Support on Patreon](./img/support-on-patreon.png)](https://www.patreon.com/blipjoy "Support the development of CarTunes")
+
 # CarTunes
 
 ![CarTunes Logo](./img/logo.png)
@@ -28,8 +30,3 @@ The [default config file](./src/default.toml) provides default values for most o
 ![Dark Mode Theme](./img/dark-mode.png)
 
 ![Light Mode Theme](./img/light-mode.png)
-
-
-## Become a patron
-
-[![Support on Patreon](./img/support-on-patreon.png)](https://www.patreon.com/blipjoy)
