@@ -669,8 +669,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.13.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77f9b394ccacc0cccb30f6de7371038a116931aa3186acd908b9ec61f405f15c"
+source = "git+https://github.com/parasyte/egui.git?rev=fd5b9ce83c9c6b0c8336b0ccfd50c801a6aa325a#fd5b9ce83c9c6b0c8336b0ccfd50c801a6aa325a"
 dependencies = [
  "epaint",
 ]
@@ -701,8 +700,7 @@ dependencies = [
 [[package]]
 name = "emath"
 version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80eea7508c08a7b4e2a041adcdca6f400d8606622c6bb980ecbbdc5f1aff9a4c"
+source = "git+https://github.com/parasyte/egui.git?rev=fd5b9ce83c9c6b0c8336b0ccfd50c801a6aa325a#fd5b9ce83c9c6b0c8336b0ccfd50c801a6aa325a"
 
 [[package]]
 name = "embed-resource"
@@ -730,22 +728,19 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "132e30d483d9fa252fe06aa112de777d068503c379fa51bc5834204ee3258fce"
+source = "git+https://github.com/parasyte/egui.git?rev=fd5b9ce83c9c6b0c8336b0ccfd50c801a6aa325a#fd5b9ce83c9c6b0c8336b0ccfd50c801a6aa325a"
 dependencies = [
  "ab_glyph",
  "ahash 0.7.4",
  "atomic_refcell",
  "emath",
  "ordered-float",
- "parking_lot",
 ]
 
 [[package]]
 name = "epi"
 version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b04a4a240553fa9254d0569cf3aa22d9dbe77a66025e1f04b0785744629c9ec"
+source = "git+https://github.com/parasyte/egui.git?rev=fd5b9ce83c9c6b0c8336b0ccfd50c801a6aa325a#fd5b9ce83c9c6b0c8336b0ccfd50c801a6aa325a"
 dependencies = [
  "egui",
 ]
@@ -2694,9 +2689,9 @@ dependencies = [
 
 [[package]]
 name = "wgpu-core"
-version = "0.9.1"
+version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c45bceb912c11584306d19e3ed36df88c398a15556371f98901b371699141ce6"
+checksum = "958a8a5e418492723ab4e7933bf6dbdf06f5dc87274ba2ae0e4f9c891aac579c"
 dependencies = [
  "arrayvec",
  "bitflags",
