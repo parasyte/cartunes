@@ -146,7 +146,7 @@ impl Setups {
                             setups.warnings.push_front(ShowWarning::new(
                                 err,
                                 format!(
-                                    "Error while loading HTML setup export `{}`",
+                                    "Error while loading HTML setup export `{}`.",
                                     entry.path().to_string_lossy(),
                                 ),
                             ));

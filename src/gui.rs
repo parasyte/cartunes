@@ -125,6 +125,13 @@ impl Gui {
                     if ui.button("About CarTunes...").clicked() {
                         self.about = true;
                     }
+                    if ui.button("Support CarTunes on Patreon").clicked() {
+                        if let Err(err) = webbrowser::open("https://www.patreon.com/blipjoy") {
+                            let warning = ShowWarning::new(err, "Unable to open web browser.");
+                            // XXX: Warnings should not be owned by `self.setups`
+                            self.setups.warnings.push_front(warning);
+                        }
+                    }
                 });
             });
         });

@@ -192,6 +192,7 @@ dependencies = [
  "toml_edit",
  "unicode-segmentation",
  "walkdir",
+ "webbrowser",
  "wgpu",
  "winit",
  "winit_input_helper",
