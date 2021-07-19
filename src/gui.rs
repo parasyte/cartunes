@@ -47,6 +47,9 @@ pub(crate) struct Gui {
     /// Show an error message.
     show_errors: VecDeque<ShowError>,
 
+    /// Show a warning message.
+    show_warnings: VecDeque<ShowWarning>,
+
     /// Show a tooltip.
     show_tooltips: HashMap<egui::Id, (String, Instant)>,
 }
@@ -89,6 +92,7 @@ impl Gui {
         setups: Setups,
         event_loop_proxy: EventLoopProxy<UserEvent>,
         show_errors: VecDeque<ShowError>,
+        show_warnings: VecDeque<ShowWarning>,
     ) -> Self {
         Self {
             config,
@@ -101,6 +105,7 @@ impl Gui {
             preferences: false,
             warning: false,
             show_errors,
+            show_warnings,
             show_tooltips: HashMap::new(),
         }
     }
@@ -128,8 +133,7 @@ impl Gui {
                     if ui.button("Support CarTunes on Patreon").clicked() {
                         if let Err(err) = webbrowser::open("https://www.patreon.com/blipjoy") {
                             let warning = ShowWarning::new(err, "Unable to open web browser.");
-                            // XXX: Warnings should not be owned by `self.setups`
-                            self.setups.warnings.push_front(warning);
+                            self.show_warnings.push_front(warning);
                         }
                     }
                 });
@@ -137,7 +141,7 @@ impl Gui {
         });
 
         // Draw the footer
-        if !self.setups.warnings.is_empty() {
+        if !self.show_warnings.is_empty() {
             egui::TopBottomPanel::bottom("footer-container").show(ctx, |ui| {
                 let rect = ui
                     .horizontal(|ui| {
@@ -145,7 +149,7 @@ impl Gui {
                         let size = ui.spacing().interact_size.y;
                         let center = egui::Vec2::splat(size / 2.0);
                         let yellow = egui::Color32::from_rgb(210, 210, 40);
-                        let len = self.setups.warnings.len();
+                        let len = self.show_warnings.len();
 
                         ui.spacing_mut().item_spacing.x /= 2.0;
                         ui.painter()
@@ -203,7 +207,7 @@ impl Gui {
     /// Update setups export path.
     pub(crate) fn update_setups_path<P: AsRef<Path>>(&mut self, setups_path: P) {
         self.config.update_setups_path(setups_path);
-        self.setups = Setups::new(&self.config);
+        self.setups = Setups::new(&mut self.show_warnings, &self.config);
         self.clear_filters();
     }
 
@@ -568,7 +572,7 @@ impl Gui {
     /// Show warning window.
     fn warning_window(&mut self, ctx: &egui::CtxRef, enabled: bool) {
         let mut window_open = self.warning;
-        let warning = self.setups.warnings.pop_back();
+        let warning = self.show_warnings.pop_back();
         if let Some(warning) = warning {
             let width = 550.0;
             let height = 185.0;
@@ -620,7 +624,7 @@ impl Gui {
 
             if window_open {
                 // Put the warning back
-                self.setups.warnings.push_back(warning);
+                self.show_warnings.push_back(warning);
             }
         }
 

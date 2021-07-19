@@ -88,10 +88,11 @@ fn create_window() -> Result<(EventLoop<UserEvent>, winit::window::Window, Gpu, 
         let scale_factor = window.scale_factor();
 
         let mut errors = VecDeque::new();
+        let mut warnings = VecDeque::new();
         let config = Framework::unwrap_config(&mut errors, event_loop.create_proxy(), config);
-        let setups = Setups::new(&config);
+        let setups = Setups::new(&mut warnings, &config);
         let theme = config.theme().as_winit_theme(&window);
-        let gui = Gui::new(config, setups, event_loop.create_proxy(), errors);
+        let gui = Gui::new(config, setups, event_loop.create_proxy(), errors, warnings);
         let gpu = Gpu::new(&window, window_size)?;
         let framework = Framework::new(window_size, scale_factor, theme, gui, &gpu);
 

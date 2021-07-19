@@ -106,7 +106,6 @@ impl Error {
 #[derive(Default)]
 pub(crate) struct Setups {
     tracks: Tracks,
-    pub(crate) warnings: VecDeque<ShowWarning>,
 }
 
 type Tracks = HashMap<String, Cars>;
@@ -116,7 +115,7 @@ type Props = HashMap<String, Vec<String>>;
 
 impl Setups {
     /// Recursively load all HTML files from the config setup exports path into a `Setups` tree.
-    pub(crate) fn new(config: &Config) -> Self {
+    pub(crate) fn new(warnings: &mut VecDeque<ShowWarning>, config: &Config) -> Self {
         // Check if a directory entry is an HTML file.
         fn is_html(entry: &DirEntry) -> bool {
             entry
@@ -135,7 +134,7 @@ impl Setups {
         for entry in walker {
             match entry {
                 Err(err) => {
-                    setups.warnings.push_front(ShowWarning::new(
+                    warnings.push_front(ShowWarning::new(
                         err,
                         "Encountered an error while looking for all exports.",
                     ));
@@ -143,7 +142,7 @@ impl Setups {
                 Ok(entry) => {
                     if entry.file_type().is_file() {
                         if let Err(err) = setups.load_file(entry.path(), config) {
-                            setups.warnings.push_front(ShowWarning::new(
+                            warnings.push_front(ShowWarning::new(
                                 err,
                                 format!(
                                     "Error while loading HTML setup export `{}`.",
@@ -320,7 +319,8 @@ mod tests {
     fn test_load_dir() {
         let mut config = Config::new("/tmp/some/path.toml", PhysicalSize::new(0, 0));
         config.update_setups_path("./fixtures");
-        let setups = Setups::new(&config);
+        let mut warnings = VecDeque::new();
+        let setups = Setups::new(&mut warnings, &config);
 
         let cars = setups
             .tracks()
