@@ -11,9 +11,8 @@ pub(crate) trait Ellipsis<'a> {
 
 impl<'a> Ellipsis<'a> for Cow<'a, str> {
     fn ellipsis(self, max_length: usize) -> Cow<'a, str> {
-        // XXX: It would be nice to use Unicode ellipsis "…", but it is not supported by my font.
-        const ELLIPSIS: &str = "...";
-        const MIN_LENGTH: usize = 4;
+        const ELLIPSIS: &str = "…";
+        const MIN_LENGTH: usize = 2;
 
         let max_length = max_length.max(MIN_LENGTH);
         let graphemes = self.graphemes(true);
@@ -77,29 +76,25 @@ mod tests {
         assert_eq!(s.ellipsis(25), Cow::from("Small"));
 
         let s = Cow::from("The number of graphemes in this string is too damn high!");
-        assert_eq!(s.ellipsis(25), Cow::from("The number of grapheme..."));
+        assert_eq!(s.ellipsis(25), Cow::from("The number of graphemes …"));
     }
 
     /// Test the Ellipsis minimum string length.
     #[test]
     fn test_ellipsis_min() {
-        for expected in ["", "A", "AB", "ABC", "ABCD"] {
+        for expected in ["", "A", "AB"] {
             let s = Cow::from(expected);
             assert_eq!(s.clone().ellipsis(0), Cow::from(expected));
             assert_eq!(s.clone().ellipsis(1), Cow::from(expected));
             assert_eq!(s.clone().ellipsis(2), Cow::from(expected));
             assert_eq!(s.clone().ellipsis(3), Cow::from(expected));
-            assert_eq!(s.clone().ellipsis(4), Cow::from(expected));
-            assert_eq!(s.clone().ellipsis(5), Cow::from(expected));
         }
 
         let s = Cow::from("The number of graphemes in this string is too damn high!");
-        assert_eq!(s.clone().ellipsis(0), Cow::from("T..."));
-        assert_eq!(s.clone().ellipsis(1), Cow::from("T..."));
-        assert_eq!(s.clone().ellipsis(2), Cow::from("T..."));
-        assert_eq!(s.clone().ellipsis(3), Cow::from("T..."));
-        assert_eq!(s.clone().ellipsis(4), Cow::from("T..."));
-        assert_eq!(s.clone().ellipsis(5), Cow::from("Th..."));
+        assert_eq!(s.clone().ellipsis(0), Cow::from("T…"));
+        assert_eq!(s.clone().ellipsis(1), Cow::from("T…"));
+        assert_eq!(s.clone().ellipsis(2), Cow::from("T…"));
+        assert_eq!(s.clone().ellipsis(3), Cow::from("Th…"));
     }
 
     /// Test the Capitalize trait.
