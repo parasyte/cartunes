@@ -187,12 +187,14 @@ impl Gui {
             // Draw setup filters
             let colors = self.config.colors();
             let diff_colors = self.config.diff_colors();
-            let (car_name, setups) = self.setup_selection(ui, &colors);
+            let (track_name, car_name, setups) = self.setup_selection(ui, &colors);
             if !setups.is_empty() {
                 // Draw setup properties grid
-                egui::containers::ScrollArea::auto_sized().show(ui, |ui| {
-                    SetupGrid::new(ui, &setups, &colors, diff_colors).show(ui, car_name);
-                });
+                egui::containers::ScrollArea::auto_sized()
+                    .id_source(format!("{}{}", track_name, car_name))
+                    .show(ui, |ui| {
+                        SetupGrid::new(ui, &setups, &colors, diff_colors).show(ui, car_name);
+                    });
             }
         });
 
@@ -297,8 +299,9 @@ impl Gui {
         &mut self,
         ui: &mut egui::Ui,
         colors: &[egui::Color32],
-    ) -> (&str, Vec<&Setup>) {
+    ) -> (&str, &str, Vec<&Setup>) {
         let mut output = Vec::new();
+        let mut output_track_name = "";
         let mut output_car_name = "";
 
         let selected_track_name = self.selected_track_name.as_ref();
@@ -309,6 +312,7 @@ impl Gui {
         ui.horizontal_wrapped(|ui| {
             if let Some(track_name) = selected_track_name {
                 if let Some(car_name) = selected_car_name {
+                    output_track_name = track_name.as_str();
                     output_car_name = car_name.as_str();
 
                     let mut setups: Vec<_> = tracks
@@ -348,7 +352,7 @@ impl Gui {
             }
         });
 
-        (output_car_name, output)
+        (output_track_name, output_car_name, output)
     }
 
     /// Show "About" window.
