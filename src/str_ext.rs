@@ -35,13 +35,12 @@ impl<'a> Ellipsis<'a> for Cow<'a, str> {
 /// An extension trait for strings that adds a sentence capitalization method.
 pub(crate) trait Capitalize<'a> {
     /// Capitalize words using ASCII uppercase/lowercase.
-    fn capitalize_words(self) -> Cow<'a, str>;
+    fn capitalize_words(self) -> String;
 }
 
-impl<'a> Capitalize<'a> for Cow<'a, str> {
-    fn capitalize_words(self) -> Cow<'a, str> {
-        let words: String = self
-            .split_word_bounds()
+impl<'a> Capitalize<'a> for &'a str {
+    fn capitalize_words(self) -> String {
+        self.split_word_bounds()
             .map(|word| {
                 let mut graphemes = word.graphemes(true);
 
@@ -53,15 +52,7 @@ impl<'a> Capitalize<'a> for Cow<'a, str> {
                     "".to_string()
                 }
             })
-            .collect();
-
-        Cow::from(words)
-    }
-}
-
-impl<'a> Capitalize<'a> for &'a str {
-    fn capitalize_words(self) -> Cow<'a, str> {
-        Cow::from(self).capitalize_words()
+            .collect()
     }
 }
 

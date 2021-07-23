@@ -23,6 +23,7 @@ epaint = { version = "0.13", default-features = false, features = ["single_threa
 font-loader = "0.11"
 kuchiki = "0.8"
 log = "0.4"
+ordered-multimap = "0.4"
 patricia_tree = "0.3"
 pollster = "0.2"
 raw-window-handle = "0.3"

@@ -1,6 +1,5 @@
 use crate::setup::Setup;
 use epaint::Galley;
-use std::collections::HashMap;
 use std::sync::Arc;
 
 /// Provides structure for representing a grid of string values.
@@ -44,8 +43,10 @@ impl<'setup> SetupGrid<'setup> {
         diff_colors: (egui::Color32, egui::Color32),
     ) -> Self {
         // Gather groups
-        let mut groups = intersect_keys(setups);
-        groups.sort_unstable();
+        let groups = setups
+            .iter()
+            .map(|inner| inner.keys().map(|s| s.as_str()).collect::<Vec<_>>());
+        let groups = intersect_keys(groups);
 
         let column_count = setups.len() + 1;
         let mut output = Self {
@@ -56,12 +57,15 @@ impl<'setup> SetupGrid<'setup> {
 
         for prop_group in groups {
             // Gather property names
-            let prop_names: Vec<_> = setups
-                .iter()
-                .map(|setup| setup.get(prop_group).unwrap())
-                .collect();
-            let mut prop_names = intersect_keys(&prop_names);
-            prop_names.sort_unstable();
+            let prop_names = setups.iter().map(|setup| {
+                setup
+                    .get(prop_group)
+                    .unwrap()
+                    .keys()
+                    .map(|k| k.as_str())
+                    .collect::<Vec<_>>()
+            });
+            let prop_names = intersect_keys(prop_names);
 
             let mut group = Group {
                 name: prop_group,
@@ -90,16 +94,25 @@ impl<'setup> SetupGrid<'setup> {
                 let mut first_value = None;
 
                 for setup in setups {
-                    let values = setup.get(prop_group).unwrap().get(prop_name).unwrap();
+                    let values = setup.get(prop_group).unwrap().get_all(prop_name);
                     let separator = if values
-                        .iter()
+                        .clone()
                         .all(|v| v.starts_with(|ch: char| ch.is_ascii_digit()))
                     {
                         ", "
                     } else {
                         " "
                     };
-                    let value = values.join(separator);
+                    let value: String = values
+                        .enumerate()
+                        .map(|(i, v)| {
+                            if i > 0 {
+                                format!("{}{}", separator, v)
+                            } else {
+                                v.to_string()
+                            }
+                        })
+                        .collect();
 
                     // Compute diff between `value` and first column
                     let color = colors.next().unwrap_or_else(|| ui.visuals().text_color());
@@ -176,11 +189,7 @@ impl<'setup> SetupGrid<'setup> {
 }
 
 /// Get the intersection of keys that exists in each `HashMap`.
-fn intersect_keys<'a, T>(maps: &'a [&'a HashMap<String, T>]) -> Vec<&'a str> {
-    let mut all_keys = maps
-        .iter()
-        .map(|inner| inner.keys().map(|s| s.as_str()).collect());
-
+fn intersect_keys<'a>(mut all_keys: impl Iterator<Item = Vec<&'a str>>) -> Vec<&'a str> {
     let mut output = if let Some(output) = all_keys.next() {
         output
     } else {
@@ -198,97 +207,90 @@ fn intersect_keys<'a, T>(maps: &'a [&'a HashMap<String, T>]) -> Vec<&'a str> {
 mod tests {
     use super::*;
 
-    /// Test `intersect_keys()` with two `HashMap`s.
+    /// Test `intersect_keys()` with two sets.
     #[test]
     fn test_intersect_keys_two() {
-        let map = ["foo", "bar"].iter().map(|v| (v.to_string(), ())).collect();
-
-        let maps = &[&map, &map];
-        let keys = intersect_keys(maps);
-        assert!(keys.contains(&"foo"));
-        assert!(keys.contains(&"bar"));
-        assert_eq!(keys.len(), 2);
+        let expected = vec!["foo", "bar"];
+        let list = vec![expected.clone(), expected.clone()];
+        let keys = intersect_keys(list.into_iter());
+        assert_eq!(keys, expected);
     }
 
-    /// Test `intersect_keys()` with three `HashMap`s.
+    /// Test `intersect_keys()` with three sets.
     #[test]
     fn test_intersect_keys_three() {
-        let map = ["foo", "bar"].iter().map(|v| (v.to_string(), ())).collect();
-
-        let maps = &[&map, &map, &map];
-        let keys = intersect_keys(maps);
-        assert!(keys.contains(&"foo"));
-        assert!(keys.contains(&"bar"));
-        assert_eq!(keys.len(), 2);
+        let expected = vec!["foo", "bar"];
+        let list = vec![expected.clone(), expected.clone(), expected.clone()];
+        let keys = intersect_keys(list.into_iter());
+        assert_eq!(keys, expected);
     }
 
-    /// Test `intersect_keys()` with four `HashMap`s.
+    /// Test `intersect_keys()` with four sets.
     #[test]
     fn test_intersect_keys_four() {
-        let map = ["foo", "bar"].iter().map(|v| (v.to_string(), ())).collect();
-
-        let maps = &[&map, &map, &map, &map];
-        let keys = intersect_keys(maps);
-        assert!(keys.contains(&"foo"));
-        assert!(keys.contains(&"bar"));
-        assert_eq!(keys.len(), 2);
+        let expected = vec!["foo", "bar"];
+        let list = vec![
+            expected.clone(),
+            expected.clone(),
+            expected.clone(),
+            expected.clone(),
+        ];
+        let keys = intersect_keys(list.into_iter());
+        assert_eq!(keys, expected);
     }
 
-    /// Test `intersect_keys()` with a "super" `HashMap` and a "sub" `HashMap`.
+    /// Test `intersect_keys()` with a superset and a subset.
     ///
     /// The two maps are the same except "super" contains an additional key.
     #[test]
     fn test_intersect_keys_super_sub() {
-        let sub_map: HashMap<_, _> = ["foo", "bar"].iter().map(|v| (v.to_string(), ())).collect();
-        let mut super_map = sub_map.clone();
-        super_map.insert("baz".to_string(), ());
+        let expected = vec!["foo", "bar"];
+        let subkeys = expected.clone();
+        let mut superkeys = subkeys.clone();
+        superkeys.push("baz");
 
-        let maps = &[&super_map, &sub_map];
-        let keys = intersect_keys(maps);
-        assert!(keys.contains(&"foo"));
-        assert!(keys.contains(&"bar"));
-        assert_eq!(keys.len(), 2);
+        let list = vec![superkeys, subkeys];
+        let keys = intersect_keys(list.into_iter());
+        assert_eq!(keys, expected);
     }
 
-    /// Test `intersect_keys()` with a "sub" `HashMap` and a "super" `HashMap`.
+    /// Test `intersect_keys()` with a subset and a superset.
     ///
     /// The two maps are the same except "super" contains an additional key.
     #[test]
     fn test_intersect_keys_sub_super() {
-        let sub_map: HashMap<_, _> = ["foo", "bar"].iter().map(|v| (v.to_string(), ())).collect();
-        let mut super_map = sub_map.clone();
-        super_map.insert("baz".to_string(), ());
+        let expected = vec!["foo", "bar"];
+        let subkeys = expected.clone();
+        let mut superkeys = subkeys.clone();
+        superkeys.push("baz");
 
-        let maps = &[&sub_map, &super_map];
-        let keys = intersect_keys(maps);
-        assert!(keys.contains(&"foo"));
-        assert!(keys.contains(&"bar"));
-        assert_eq!(keys.len(), 2);
+        let list = vec![subkeys, superkeys];
+        let keys = intersect_keys(list.into_iter());
+        assert_eq!(keys, expected);
     }
 
-    /// Test `intersect_keys()` with `HashMap`s that share only a few keys.
+    /// Test `intersect_keys()` with sets that share only a few keys.
     #[test]
     fn test_intersect_keys_with_intersection() {
-        let mut map_a: HashMap<_, _> = ["foo", "bar"].iter().map(|v| (v.to_string(), ())).collect();
-        let mut map_b: HashMap<_, _> = map_a.clone();
-        map_a.insert("baz".to_string(), ());
-        map_b.insert("qux".to_string(), ());
+        let expected = vec!["foo", "bar"];
+        let mut keys_a = expected.clone();
+        let mut keys_b = expected.clone();
+        keys_a.push("baz");
+        keys_b.push("qux");
 
-        let maps = &[&map_a, &map_b];
-        let keys = intersect_keys(maps);
-        assert!(keys.contains(&"foo"));
-        assert!(keys.contains(&"bar"));
-        assert_eq!(keys.len(), 2);
+        let list = vec![keys_a, keys_b];
+        let keys = intersect_keys(list.into_iter());
+        assert_eq!(keys, expected);
     }
 
-    /// Test `intersect_keys()` with `HashMap`s that share no keys.
+    /// Test `intersect_keys()` with sets that share no keys.
     #[test]
     fn test_intersect_keys_without_intersection() {
-        let map_a = ["foo", "bar"].iter().map(|v| (v.to_string(), ())).collect();
-        let map_b = ["baz", "qux"].iter().map(|v| (v.to_string(), ())).collect();
+        let keys_a = vec!["foo", "bar"];
+        let keys_b = vec!["baz", "qux"];
 
-        let maps = &[&map_a, &map_b];
-        let keys = intersect_keys(maps);
-        assert_eq!(keys.len(), 0);
+        let list = vec![keys_a, keys_b];
+        let keys = intersect_keys(list.into_iter());
+        assert!(keys.is_empty());
     }
 }

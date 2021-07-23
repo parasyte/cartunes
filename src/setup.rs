@@ -4,6 +4,7 @@ use crate::config::Config;
 use crate::gui::ShowWarning;
 use crate::str_ext::Capitalize;
 use kuchiki::traits::TendrilSink;
+use ordered_multimap::ListOrderedMultimap;
 use std::collections::{HashMap, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -28,6 +29,10 @@ pub(crate) enum Error {
     /// Export is missing a track identifier.
     #[error("Missing track identifier")]
     MissingTrack,
+
+    /// Export has duplicate property group.
+    #[error("Duplicate property group: {0}")]
+    DuplicatePropGroup(String),
 }
 
 impl Error {
@@ -110,8 +115,8 @@ pub(crate) struct Setups {
 
 type Tracks = HashMap<String, Cars>;
 type Cars = HashMap<String, Vec<(String, Setup)>>;
-pub(crate) type Setup = HashMap<String, Props>;
-type Props = HashMap<String, Vec<String>>;
+pub(crate) type Setup = ListOrderedMultimap<String, Props>;
+type Props = ListOrderedMultimap<String, String>;
 
 impl Setups {
     /// Recursively load all HTML files from the config setup exports path into a `Setups` tree.
@@ -252,8 +257,25 @@ fn setup_from_html<P: AsRef<Path>>(
         let mut group_name = group.text_contents().capitalize_words().to_string();
         group_name.retain(|ch| ch != ':');
 
-        let props = get_properties(group.as_node().next_sibling()).into_iter();
-        setup.entry(group_name).or_default().extend(props);
+        let props = get_properties(group.as_node().next_sibling());
+
+        // Heuristic that determines whether the group corresponds to a tire
+        if props.keys().any(|k| k.starts_with("Tread"))
+            && !props.keys().any(|k| {
+                k == "Camber"
+                    || k == "Caster"
+                    || k == "Ride height"
+                    || k == "Corner weight"
+                    || k.starts_with("Spring")
+            })
+            && !group_name.ends_with("Tire")
+        {
+            group_name += " Tire";
+        }
+
+        if setup.insert(group_name.clone(), props).is_some() {
+            return Err(Error::DuplicatePropGroup(group_name));
+        }
     }
 
     Ok((track_name, car_name, setup))
@@ -289,8 +311,10 @@ fn get_properties(mut node_ref: Option<kuchiki::NodeRef>) -> Props {
             let text = text.trim();
             if let Some(text) = text.strip_suffix(':') {
                 // Move any existing values to the map
-                if !name.is_empty() && !values.is_empty() {
-                    map.insert(name, values.drain(..).collect());
+                if !name.is_empty() {
+                    for value in values.drain(..) {
+                        map.append(name.clone(), value);
+                    }
                 }
 
                 // This is the property name
@@ -303,8 +327,10 @@ fn get_properties(mut node_ref: Option<kuchiki::NodeRef>) -> Props {
         node_ref = node.next_sibling();
     }
 
-    if !name.is_empty() && !values.is_empty() {
-        map.insert(name, values);
+    if !name.is_empty() {
+        for value in values.into_iter() {
+            map.append(name.clone(), value);
+        }
     }
 
     map
@@ -313,6 +339,7 @@ fn get_properties(mut node_ref: Option<kuchiki::NodeRef>) -> Props {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::iter::FromIterator;
     use winit::dpi::PhysicalSize;
 
     #[test]
@@ -331,7 +358,7 @@ mod tests {
         assert_eq!(cars.len(), 1);
         let (file_name, skip_barber) = &cars[0];
         assert_eq!(file_name, "skip_barber_centripetal");
-        assert_eq!(skip_barber.len(), 6);
+        assert_eq!(skip_barber.keys().len(), 6);
 
         let cars = setups
             .tracks()
@@ -342,9 +369,31 @@ mod tests {
         assert_eq!(cars.len(), 1);
         let (file_name, mx5) = &cars[0];
         assert_eq!(file_name, "mx5_charlotte_legends_oval");
-        assert_eq!(mx5.len(), 6);
+        assert_eq!(mx5.keys().len(), 6);
 
-        assert_eq!(setups.tracks().len(), 2);
+        let cars = setups
+            .tracks()
+            .get("Circuit des 24 Heures du Mans")
+            .unwrap()
+            .get("Dallara P217")
+            .unwrap();
+        assert_eq!(cars.len(), 1);
+        let (file_name, dallara) = &cars[0];
+        assert_eq!(file_name, "2021S2_ARA_LMP2_LeMans_V1");
+        assert_eq!(dallara.keys().len(), 18);
+
+        let cars = setups
+            .tracks()
+            .get("Nürburgring Combined")
+            .unwrap()
+            .get("Porsche 911 GT3 R")
+            .unwrap();
+        assert_eq!(cars.len(), 1);
+        let (file_name, porche911) = &cars[0];
+        assert_eq!(file_name, "baseline");
+        assert_eq!(porche911.keys().len(), 12);
+
+        assert_eq!(setups.tracks().len(), 4);
     }
 
     #[test]
@@ -355,101 +404,113 @@ mod tests {
 
         assert_eq!(track_name, "Centripetal Circuit".to_string());
         assert_eq!(car_name, "Skip Barber Formula 2000".to_string());
-        assert_eq!(setup.len(), 6);
+        assert_eq!(setup.keys().len(), 6);
 
         // Front
+        let expected = ListOrderedMultimap::from_iter(
+            [("Brake bias", "54%")]
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
         let front = setup.get("Front").unwrap();
-        assert_eq!(front.get("Brake bias").unwrap(), &vec!["54%".to_string()]);
-        assert_eq!(front.len(), 1);
+        assert_eq!(front, &expected);
 
         // Left Front
-        let expected = [
-            ("Cold pressure", vec!["25.0 psi"]),
-            ("Last hot pressure", vec!["25.0 psi"]),
-            ("Last temps O M I", vec!["119F", "119F", "119F"]),
-            ("Tread remaining", vec!["100%", "100%", "100%"]),
-            ("Corner weight", vec!["301 lbs"]),
-            ("Ride height", vec!["1.95 in"]),
-            ("Spring perch offset", vec!["5 x 1/16 in."]),
-            ("Camber", vec!["-1.6 deg"]),
-            ("Caster", vec!["+12.2 deg"]),
-        ];
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Cold pressure", "25.0 psi"),
+                ("Last hot pressure", "25.0 psi"),
+                ("Last temps O M I", "119F"),
+                ("Last temps O M I", "119F"),
+                ("Last temps O M I", "119F"),
+                ("Tread remaining", "100%"),
+                ("Tread remaining", "100%"),
+                ("Tread remaining", "100%"),
+                ("Corner weight", "301 lbs"),
+                ("Ride height", "1.95 in"),
+                ("Spring perch offset", "5 x 1/16 in."),
+                ("Camber", "-1.6 deg"),
+                ("Caster", "+12.2 deg"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
         let left_front = setup.get("Left Front").unwrap();
-        for expected in &expected {
-            let actual = left_front.get(expected.0).unwrap();
-            let expected: Vec<_> = expected.1.iter().map(|s| s.to_string()).collect();
-
-            assert_eq!(actual, &expected);
-        }
-        assert_eq!(left_front.len(), 9);
+        assert_eq!(left_front, &expected);
 
         // Left Rear
-        let expected = [
-            ("Cold pressure", vec!["25.0 psi"]),
-            ("Last hot pressure", vec!["25.0 psi"]),
-            ("Last temps O M I", vec!["119F", "119F", "119F"]),
-            ("Tread remaining", vec!["100%", "100%", "100%"]),
-            ("Corner weight", vec!["438 lbs"]),
-            ("Ride height", vec!["3.20 in"]),
-            ("Camber", vec!["-2.1 deg"]),
-        ];
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Cold pressure", "25.0 psi"),
+                ("Last hot pressure", "25.0 psi"),
+                ("Last temps O M I", "119F"),
+                ("Last temps O M I", "119F"),
+                ("Last temps O M I", "119F"),
+                ("Tread remaining", "100%"),
+                ("Tread remaining", "100%"),
+                ("Tread remaining", "100%"),
+                ("Corner weight", "438 lbs"),
+                ("Ride height", "3.20 in"),
+                ("Camber", "-2.1 deg"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
         let left_rear = setup.get("Left Rear").unwrap();
-        for expected in &expected {
-            let actual = left_rear.get(expected.0).unwrap();
-            let expected: Vec<_> = expected.1.iter().map(|s| s.to_string()).collect();
-
-            assert_eq!(actual, &expected);
-        }
-        assert_eq!(left_rear.len(), 7);
+        assert_eq!(left_rear, &expected);
 
         // Right Front
-        let expected = [
-            ("Cold pressure", vec!["25.0 psi"]),
-            ("Last hot pressure", vec!["25.0 psi"]),
-            ("Last temps I M O", vec!["119F", "119F", "119F"]),
-            ("Tread remaining", vec!["100%", "100%", "100%"]),
-            ("Corner weight", vec!["301 lbs"]),
-            ("Ride height", vec!["1.95 in"]),
-            ("Spring perch offset", vec!["5 x 1/16 in."]),
-            ("Camber", vec!["-1.6 deg"]),
-            ("Caster", vec!["+12.2 deg"]),
-        ];
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Cold pressure", "25.0 psi"),
+                ("Last hot pressure", "25.0 psi"),
+                ("Last temps I M O", "119F"),
+                ("Last temps I M O", "119F"),
+                ("Last temps I M O", "119F"),
+                ("Tread remaining", "100%"),
+                ("Tread remaining", "100%"),
+                ("Tread remaining", "100%"),
+                ("Corner weight", "301 lbs"),
+                ("Ride height", "1.95 in"),
+                ("Spring perch offset", "5 x 1/16 in."),
+                ("Camber", "-1.6 deg"),
+                ("Caster", "+12.2 deg"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
         let right_front = setup.get("Right Front").unwrap();
-        for expected in &expected {
-            let actual = right_front.get(expected.0).unwrap();
-            let expected: Vec<_> = expected.1.iter().map(|s| s.to_string()).collect();
-
-            assert_eq!(actual, &expected);
-        }
-        assert_eq!(right_front.len(), 9);
+        assert_eq!(right_front, &expected);
 
         // Right Rear
-        let expected = [
-            ("Cold pressure", vec!["25.0 psi"]),
-            ("Last hot pressure", vec!["25.0 psi"]),
-            ("Last temps I M O", vec!["119F", "119F", "119F"]),
-            ("Tread remaining", vec!["100%", "100%", "100%"]),
-            ("Corner weight", vec!["438 lbs"]),
-            ("Ride height", vec!["3.20 in"]),
-            ("Camber", vec!["-2.1 deg"]),
-        ];
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Cold pressure", "25.0 psi"),
+                ("Last hot pressure", "25.0 psi"),
+                ("Last temps I M O", "119F"),
+                ("Last temps I M O", "119F"),
+                ("Last temps I M O", "119F"),
+                ("Tread remaining", "100%"),
+                ("Tread remaining", "100%"),
+                ("Tread remaining", "100%"),
+                ("Corner weight", "438 lbs"),
+                ("Ride height", "3.20 in"),
+                ("Camber", "-2.1 deg"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
         let right_rear = setup.get("Right Rear").unwrap();
-        for expected in &expected {
-            let actual = right_rear.get(expected.0).unwrap();
-            let expected: Vec<_> = expected.1.iter().map(|s| s.to_string()).collect();
-
-            assert_eq!(actual, &expected);
-        }
-        assert_eq!(right_rear.len(), 7);
+        assert_eq!(right_rear, &expected);
 
         // Rear
-        let rear = setup.get("Rear").unwrap();
-        assert_eq!(
-            rear.get("Fuel level").unwrap(),
-            &vec!["4.2 gal".to_string()]
+        let expected = ListOrderedMultimap::from_iter(
+            [("Fuel level", "4.2 gal"), ("Anti-roll bar", "6")]
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string())),
         );
-        assert_eq!(rear.get("Anti-roll bar").unwrap(), &vec!["6".to_string()]);
-        assert_eq!(rear.len(), 2);
+        let rear = setup.get("Rear").unwrap();
+        assert_eq!(rear, &expected);
     }
 
     #[test]
@@ -460,120 +521,688 @@ mod tests {
 
         assert_eq!(track_name, "Charlotte Motor Speedway".to_string());
         assert_eq!(car_name, "Global Mazda MX-5 Cup".to_string());
-        assert_eq!(setup.len(), 6);
+        assert_eq!(setup.keys().len(), 6);
 
         // Front
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Toe-in", r#"-0/16""#),
+                ("Cross weight", "50.0%"),
+                ("Anti-roll bar", "Firm"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
         let front = setup.get("Front").unwrap();
-        assert_eq!(front.get("Toe-in").unwrap(), &vec![r#"-0/16""#.to_string()]);
-        assert_eq!(
-            front.get("Cross weight").unwrap(),
-            &vec!["50.0%".to_string()]
-        );
-        assert_eq!(
-            front.get("Anti-roll bar").unwrap(),
-            &vec!["Firm".to_string()]
-        );
-        assert_eq!(front.len(), 3);
+        assert_eq!(front, &expected);
 
         // Left Front
-        let expected = [
-            ("Cold pressure", vec!["30.0 psi"]),
-            ("Last hot pressure", vec!["30.0 psi"]),
-            ("Last temps O M I", vec!["103F", "103F", "103F"]),
-            ("Tread remaining", vec!["100%", "100%", "100%"]),
-            ("Corner weight", vec!["605 lbs"]),
-            ("Ride height", vec!["4.83 in"]),
-            ("Spring perch offset", vec![r#"2.563""#]),
-            ("Bump stiffness", vec!["+10 clicks"]),
-            ("Rebound stiffness", vec!["+8 clicks"]),
-            ("Camber", vec!["-2.7 deg"]),
-        ];
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Cold pressure", "30.0 psi"),
+                ("Last hot pressure", "30.0 psi"),
+                ("Last temps O M I", "103F"),
+                ("Last temps O M I", "103F"),
+                ("Last temps O M I", "103F"),
+                ("Tread remaining", "100%"),
+                ("Tread remaining", "100%"),
+                ("Tread remaining", "100%"),
+                ("Corner weight", "605 lbs"),
+                ("Ride height", "4.83 in"),
+                ("Spring perch offset", r#"2.563""#),
+                ("Bump stiffness", "+10 clicks"),
+                ("Rebound stiffness", "+8 clicks"),
+                ("Camber", "-2.7 deg"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
         let left_front = setup.get("Left Front").unwrap();
-        for expected in &expected {
-            let actual = left_front.get(expected.0).unwrap();
-            let expected: Vec<_> = expected.1.iter().map(|s| s.to_string()).collect();
-
-            assert_eq!(actual, &expected);
-        }
-        assert_eq!(left_front.len(), 10);
+        assert_eq!(left_front, &expected);
 
         // Left Rear
-        let expected = [
-            ("Cold pressure", vec!["30.0 psi"]),
-            ("Last hot pressure", vec!["30.0 psi"]),
-            ("Last temps O M I", vec!["103F", "103F", "103F"]),
-            ("Tread remaining", vec!["100%", "100%", "100%"]),
-            ("Corner weight", vec!["540 lbs"]),
-            ("Ride height", vec!["4.86 in"]),
-            ("Spring perch offset", vec![r#"1.625""#]),
-            ("Bump stiffness", vec!["+8 clicks"]),
-            ("Rebound stiffness", vec!["+10 clicks"]),
-            ("Camber", vec!["-2.7 deg"]),
-        ];
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Cold pressure", "30.0 psi"),
+                ("Last hot pressure", "30.0 psi"),
+                ("Last temps O M I", "103F"),
+                ("Last temps O M I", "103F"),
+                ("Last temps O M I", "103F"),
+                ("Tread remaining", "100%"),
+                ("Tread remaining", "100%"),
+                ("Tread remaining", "100%"),
+                ("Corner weight", "540 lbs"),
+                ("Ride height", "4.86 in"),
+                ("Spring perch offset", r#"1.625""#),
+                ("Bump stiffness", "+8 clicks"),
+                ("Rebound stiffness", "+10 clicks"),
+                ("Camber", "-2.7 deg"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
         let left_rear = setup.get("Left Rear").unwrap();
-        for expected in &expected {
-            let actual = left_rear.get(expected.0).unwrap();
-            let expected: Vec<_> = expected.1.iter().map(|s| s.to_string()).collect();
-
-            assert_eq!(actual, &expected);
-        }
-        assert_eq!(left_rear.len(), 10);
+        assert_eq!(left_rear, &expected);
 
         // Right Front
-        let expected = [
-            ("Cold pressure", vec!["30.0 psi"]),
-            ("Last hot pressure", vec!["30.0 psi"]),
-            ("Last temps I M O", vec!["103F", "103F", "103F"]),
-            ("Tread remaining", vec!["100%", "100%", "100%"]),
-            ("Corner weight", vec!["552 lbs"]),
-            ("Ride height", vec!["4.84 in"]),
-            ("Spring perch offset", vec![r#"2.781""#]),
-            ("Bump stiffness", vec!["+10 clicks"]),
-            ("Rebound stiffness", vec!["+8 clicks"]),
-            ("Camber", vec!["-2.7 deg"]),
-        ];
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Cold pressure", "30.0 psi"),
+                ("Last hot pressure", "30.0 psi"),
+                ("Last temps I M O", "103F"),
+                ("Last temps I M O", "103F"),
+                ("Last temps I M O", "103F"),
+                ("Tread remaining", "100%"),
+                ("Tread remaining", "100%"),
+                ("Tread remaining", "100%"),
+                ("Corner weight", "552 lbs"),
+                ("Ride height", "4.84 in"),
+                ("Spring perch offset", r#"2.781""#),
+                ("Bump stiffness", "+10 clicks"),
+                ("Rebound stiffness", "+8 clicks"),
+                ("Camber", "-2.7 deg"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
         let right_front = setup.get("Right Front").unwrap();
-        for expected in &expected {
-            let actual = right_front.get(expected.0).unwrap();
-            let expected: Vec<_> = expected.1.iter().map(|s| s.to_string()).collect();
-
-            assert_eq!(actual, &expected);
-        }
-        assert_eq!(right_front.len(), 10);
+        assert_eq!(right_front, &expected);
 
         // Right Rear
-        let expected = [
-            ("Cold pressure", vec!["30.0 psi"]),
-            ("Last hot pressure", vec!["30.0 psi"]),
-            ("Last temps I M O", vec!["103F", "103F", "103F"]),
-            ("Tread remaining", vec!["100%", "100%", "100%"]),
-            ("Corner weight", vec!["488 lbs"]),
-            ("Ride height", vec!["4.87 in"]),
-            ("Spring perch offset", vec![r#"1.844""#]),
-            ("Bump stiffness", vec!["+8 clicks"]),
-            ("Rebound stiffness", vec!["+10 clicks"]),
-            ("Camber", vec!["-2.7 deg"]),
-        ];
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Cold pressure", "30.0 psi"),
+                ("Last hot pressure", "30.0 psi"),
+                ("Last temps I M O", "103F"),
+                ("Last temps I M O", "103F"),
+                ("Last temps I M O", "103F"),
+                ("Tread remaining", "100%"),
+                ("Tread remaining", "100%"),
+                ("Tread remaining", "100%"),
+                ("Corner weight", "488 lbs"),
+                ("Ride height", "4.87 in"),
+                ("Spring perch offset", r#"1.844""#),
+                ("Bump stiffness", "+8 clicks"),
+                ("Rebound stiffness", "+10 clicks"),
+                ("Camber", "-2.7 deg"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
         let right_rear = setup.get("Right Rear").unwrap();
-        for expected in &expected {
-            let actual = right_rear.get(expected.0).unwrap();
-            let expected: Vec<_> = expected.1.iter().map(|s| s.to_string()).collect();
-
-            assert_eq!(actual, &expected);
-        }
-        assert_eq!(right_rear.len(), 10);
+        assert_eq!(right_rear, &expected);
 
         // Rear
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Fuel level", "5.3 gal"),
+                ("Toe-in", r#"+2/16""#),
+                ("Anti-roll bar", "Unhooked"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
         let rear = setup.get("Rear").unwrap();
-        assert_eq!(
-            rear.get("Fuel level").unwrap(),
-            &vec!["5.3 gal".to_string()]
+        assert_eq!(rear, &expected);
+    }
+
+    #[test]
+    fn test_setup_dallara_p217() {
+        let config = Config::new("/tmp/some/path.toml", PhysicalSize::new(0, 0));
+        let (track_name, car_name, setup) =
+            setup_from_html("./fixtures/2021S2_ARA_LMP2_LeMans_V1.htm", &config).unwrap();
+
+        assert_eq!(track_name, "Circuit des 24 Heures du Mans".to_string());
+        assert_eq!(car_name, "Dallara P217".to_string());
+        assert_eq!(setup.keys().len(), 18);
+
+        // Left Front Tire
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Starting pressure", "20.0 psi"),
+                ("Last hot pressure", "22.0 psi"),
+                ("Last temps O M I", "178F"),
+                ("Last temps O M I", "182F"),
+                ("Last temps O M I", "187F"),
+                ("Tread remaining", "99%"),
+                ("Tread remaining", "98%"),
+                ("Tread remaining", "98%"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
         );
-        assert_eq!(rear.get("Toe-in").unwrap(), &vec![r#"+2/16""#.to_string()]);
-        assert_eq!(
-            rear.get("Anti-roll bar").unwrap(),
-            &vec!["Unhooked".to_string()]
+        let left_front_tire = setup.get("Left Front Tire").unwrap();
+        assert_eq!(left_front_tire, &expected);
+
+        // Left Rear Tire
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Starting pressure", "20.0 psi"),
+                ("Last hot pressure", "22.3 psi"),
+                ("Last temps O M I", "186F"),
+                ("Last temps O M I", "196F"),
+                ("Last temps O M I", "200F"),
+                ("Tread remaining", "98%"),
+                ("Tread remaining", "97%"),
+                ("Tread remaining", "97%"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
         );
-        assert_eq!(rear.len(), 3);
+        let left_rear_tire = setup.get("Left Rear Tire").unwrap();
+        assert_eq!(left_rear_tire, &expected);
+
+        // Right Front Tire
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Starting pressure", "20.0 psi"),
+                ("Last hot pressure", "21.8 psi"),
+                ("Last temps I M O", "183F"),
+                ("Last temps I M O", "179F"),
+                ("Last temps I M O", "173F"),
+                ("Tread remaining", "98%"),
+                ("Tread remaining", "98%"),
+                ("Tread remaining", "99%"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let right_front_tire = setup.get("Right Front Tire").unwrap();
+        assert_eq!(right_front_tire, &expected);
+
+        // Right Rear Tire
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Starting pressure", "20.0 psi"),
+                ("Last hot pressure", "22.1 psi"),
+                ("Last temps I M O", "199F"),
+                ("Last temps I M O", "195F"),
+                ("Last temps I M O", "182F"),
+                ("Tread remaining", "97%"),
+                ("Tread remaining", "97%"),
+                ("Tread remaining", "98%"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let right_rear_tire = setup.get("Right Rear Tire").unwrap();
+        assert_eq!(right_rear_tire, &expected);
+
+        // Aero Settings
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Downforce trim", "Low"),
+                ("Rear wing angle", "12 deg"),
+                ("# of dive planes", "1"),
+                ("Wing gurney setting", "Off"),
+                ("Deck gurney setting", "Off"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let aero_settings = setup.get("Aero Settings").unwrap();
+        assert_eq!(aero_settings, &expected);
+
+        // Aero Calculator
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Front RH at speed", r#"1.417""#),
+                ("Rear RH at speed", r#"0.945""#),
+                ("Downforce balance", "41.67%"),
+                ("L/D", "4.991"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let aero_calculator = setup.get("Aero Calculator").unwrap();
+        assert_eq!(aero_calculator, &expected);
+
+        // Front
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Third spring", "1143 lbs/in"),
+                ("Third perch offset", r#"0.886""#),
+                ("Third spring defl", "0.183 in"),
+                ("Third spring defl", "of"),
+                ("Third spring defl", "2.539 in"),
+                ("Third slider defl", "0.975 in"),
+                ("Third slider defl", "of"),
+                ("Third slider defl", "3.937 in"),
+                ("ARB size", "Medium"),
+                ("ARB blades", "P4"),
+                ("Toe-in", r#"-2/32""#),
+                ("Third pin length", r#"7.480""#),
+                ("Front pushrod length", r#"7.323""#),
+                ("Power steering assist", "3"),
+                ("Steering ratio", "11.0"),
+                ("Display page", "Race1"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let front = setup.get("Front").unwrap();
+        assert_eq!(front, &expected);
+
+        // Left Front
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Corner weight", "528 lbs"),
+                ("Ride height", "1.771 in"),
+                ("Shock defl", "0.612 in"),
+                ("Shock defl", "of"),
+                ("Shock defl", "1.969 in"),
+                ("Torsion bar defl", "0.362 in"),
+                ("Torsion bar turns", "2.750 Turns"),
+                ("Torsion bar O.D.", "13.90 mm"),
+                ("LS comp damping", "4 clicks"),
+                ("HS comp damping", "3 clicks"),
+                ("HS comp damp slope", "9 clicks"),
+                ("LS rbd damping", "5 clicks"),
+                ("HS rbd damping", "9 clicks"),
+                ("Camber", "-2.5 deg"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let left_front = setup.get("Left Front").unwrap();
+        assert_eq!(left_front, &expected);
+
+        // Left Rear
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Corner weight", "652 lbs"),
+                ("Ride height", "1.748 in"),
+                ("Shock defl", "1.478 in"),
+                ("Shock defl", "of"),
+                ("Shock defl", "2.953 in"),
+                ("Spring defl", "0.604 in"),
+                ("Spring defl", "of"),
+                ("Spring defl", "3.525 in"),
+                ("Spring perch offset", r#"1.969""#),
+                ("Spring rate", "600 lbs/in"),
+                ("LS comp damping", "5 clicks"),
+                ("HS comp damping", "3 clicks"),
+                ("HS comp damp slope", "9 clicks"),
+                ("LS rbd damping", "8 clicks"),
+                ("HS rbd damping", "9 clicks"),
+                ("Camber", "-1.5 deg"),
+                ("Toe-in", r#"+0/32""#),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let left_rear = setup.get("Left Rear").unwrap();
+        assert_eq!(left_rear, &expected);
+
+        // Right Front
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Corner weight", "528 lbs"),
+                ("Ride height", "1.771 in"),
+                ("Shock defl", "0.612 in"),
+                ("Shock defl", "of"),
+                ("Shock defl", "1.969 in"),
+                ("Torsion bar defl", "0.362 in"),
+                ("Torsion bar turns", "2.750 Turns"),
+                ("Torsion bar O.D.", "13.90 mm"),
+                ("LS comp damping", "4 clicks"),
+                ("HS comp damping", "3 clicks"),
+                ("HS comp damp slope", "9 clicks"),
+                ("LS rbd damping", "5 clicks"),
+                ("HS rbd damping", "9 clicks"),
+                ("Camber", "-2.5 deg"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let right_front = setup.get("Right Front").unwrap();
+        assert_eq!(right_front, &expected);
+
+        // Right Rear
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Corner weight", "652 lbs"),
+                ("Ride height", "1.748 in"),
+                ("Shock defl", "1.478 in"),
+                ("Shock defl", "of"),
+                ("Shock defl", "2.953 in"),
+                ("Spring defl", "0.604 in"),
+                ("Spring defl", "of"),
+                ("Spring defl", "3.525 in"),
+                ("Spring perch offset", r#"1.969""#),
+                ("Spring rate", "600 lbs/in"),
+                ("LS comp damping", "5 clicks"),
+                ("HS comp damping", "3 clicks"),
+                ("HS comp damp slope", "9 clicks"),
+                ("LS rbd damping", "8 clicks"),
+                ("HS rbd damping", "9 clicks"),
+                ("Camber", "-1.5 deg"),
+                ("Toe-in", r#"+0/32""#),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let right_rear = setup.get("Right Rear").unwrap();
+        assert_eq!(right_rear, &expected);
+
+        // Rear
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Third spring", "800 lbs/in"),
+                ("Third perch offset", r#"1.358""#),
+                ("Third spring defl", "0.247 in"),
+                ("Third spring defl", "of"),
+                ("Third spring defl", "3.266 in"),
+                ("Third slider defl", "2.480 in"),
+                ("Third slider defl", "of"),
+                ("Third slider defl", "5.906 in"),
+                ("ARB size", "Medium"),
+                ("ARB blades", "P5"),
+                ("Rear pushrod length", r#"6.516""#),
+                ("Third pin length", r#"6.890""#),
+                ("Cross weight", "50.0%"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let rear = setup.get("Rear").unwrap();
+        assert_eq!(rear, &expected);
+
+        // Lighting
+        let expected = ListOrderedMultimap::from_iter(
+            [("Roof ID light color", "Blue")]
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let lighting = setup.get("Lighting").unwrap();
+        assert_eq!(lighting, &expected);
+
+        // Brake Spec
+        let expected = ListOrderedMultimap::from_iter(
+            [("Pad compound", "High"), ("Brake pressure bias", "48.8%")]
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let brake_spec = setup.get("Brake Spec").unwrap();
+        assert_eq!(brake_spec, &expected);
+
+        // Fuel
+        let expected = ListOrderedMultimap::from_iter(
+            [("Fuel level", "19.8 gal")]
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let fuel = setup.get("Fuel").unwrap();
+        assert_eq!(fuel, &expected);
+
+        // Traction Control
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Traction control gain", "3 (TC)"),
+                ("Traction control slip", "2 (TC)"),
+                ("Throttle shape", "1"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let fuel = setup.get("Traction Control").unwrap();
+        assert_eq!(fuel, &expected);
+
+        // Gear Ratios
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Gear stack", "Tall"),
+                ("Speed in first", "86.7 mph"),
+                ("Speed in second", "112.1 mph"),
+                ("Speed in third", "131.6 mph"),
+                ("Speed in forth", "156.3 mph"),
+                ("Speed in fifth", "182.7 mph"),
+                ("Speed in sixth", "210.2 mph"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let gear_ratios = setup.get("Gear Ratios").unwrap();
+        assert_eq!(gear_ratios, &expected);
+
+        // Rear Diff Spec
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Drive/coast ramp angles", "45/55"),
+                ("Clutch friction faces", "10"),
+                ("Preload", "81 ft-lbs"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let rear_diff_spec = setup.get("Rear Diff Spec").unwrap();
+        assert_eq!(rear_diff_spec, &expected);
+    }
+
+    #[test]
+    fn test_setup_porche_911_gt3_r() {
+        let config = Config::new("/tmp/some/path.toml", PhysicalSize::new(0, 0));
+        let (track_name, car_name, setup) =
+            setup_from_html("./fixtures/baseline.htm", &config).unwrap();
+
+        assert_eq!(track_name, "Nürburgring Combined".to_string());
+        assert_eq!(car_name, "Porsche 911 GT3 R".to_string());
+        assert_eq!(setup.keys().len(), 12);
+
+        // Left Front Tire
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Starting pressure", "20.5 psi"),
+                ("Last hot pressure", "20.5 psi"),
+                ("Last temps O M I", "112F"),
+                ("Last temps O M I", "112F"),
+                ("Last temps O M I", "112F"),
+                ("Tread remaining", "100%"),
+                ("Tread remaining", "100%"),
+                ("Tread remaining", "100%"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let left_front_tire = setup.get("Left Front Tire").unwrap();
+        assert_eq!(left_front_tire, &expected);
+
+        // Left Rear Tire
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Starting pressure", "20.5 psi"),
+                ("Last hot pressure", "20.5 psi"),
+                ("Last temps O M I", "112F"),
+                ("Last temps O M I", "112F"),
+                ("Last temps O M I", "112F"),
+                ("Tread remaining", "100%"),
+                ("Tread remaining", "100%"),
+                ("Tread remaining", "100%"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let left_rear_tire = setup.get("Left Rear Tire").unwrap();
+        assert_eq!(left_rear_tire, &expected);
+
+        // Right Front Tire
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Starting pressure", "20.5 psi"),
+                ("Last hot pressure", "20.5 psi"),
+                ("Last temps I M O", "112F"),
+                ("Last temps I M O", "112F"),
+                ("Last temps I M O", "112F"),
+                ("Tread remaining", "100%"),
+                ("Tread remaining", "100%"),
+                ("Tread remaining", "100%"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let right_front_tire = setup.get("Right Front Tire").unwrap();
+        assert_eq!(right_front_tire, &expected);
+
+        // Right Rear Tire
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Starting pressure", "20.5 psi"),
+                ("Last hot pressure", "20.5 psi"),
+                ("Last temps I M O", "112F"),
+                ("Last temps I M O", "112F"),
+                ("Last temps I M O", "112F"),
+                ("Tread remaining", "100%"),
+                ("Tread remaining", "100%"),
+                ("Tread remaining", "100%"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let right_rear_tire = setup.get("Right Rear Tire").unwrap();
+        assert_eq!(right_rear_tire, &expected);
+
+        // Aero Balance Calc
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Front RH at speed", r#"1.929""#),
+                ("Rear RH at speed", r#"2.835""#),
+                ("Wing setting", "7 degrees"),
+                ("Front downforce", "39.83%"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let aero_balance_calc = setup.get("Aero Balance Calc").unwrap();
+        assert_eq!(aero_balance_calc, &expected);
+
+        // Front
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("ARB diameter", "45 mm"),
+                ("ARB setting", "Soft"),
+                ("Toe-in", r#"-2/32""#),
+                ("Front master cyl.", "0.811 in"),
+                ("Rear master cyl.", "0.811 in"),
+                ("Brake pads", "Medium friction"),
+                ("Fuel level", "15.9 gal"),
+                ("Cross weight", "50.0%"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let front = setup.get("Front").unwrap();
+        assert_eq!(front, &expected);
+
+        // Left Front
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Corner weight", "605 lbs"),
+                ("Ride height", "2.034 in"),
+                ("Spring perch offset", r#"2.441""#),
+                ("Spring rate", "1371 lbs/in"),
+                ("LS Comp damping", "-6 clicks"),
+                ("HS Comp damping", "-10 clicks"),
+                ("LS Rbd damping", "-8 clicks"),
+                ("HS Rbd damping", "-10 clicks"),
+                ("Camber", "-4.0 deg"),
+                ("Caster", "+7.6 deg"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let left_front = setup.get("Left Front").unwrap();
+        assert_eq!(left_front, &expected);
+
+        // Left Rear
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Corner weight", "945 lbs"),
+                ("Ride height", "3.026 in"),
+                ("Spring perch offset", r#"2.717""#),
+                ("Spring rate", "1600 lbs/in"),
+                ("LS Comp damping", "-6 clicks"),
+                ("HS Comp damping", "-10 clicks"),
+                ("LS Rbd damping", "-8 clicks"),
+                ("HS Rbd damping", "-10 clicks"),
+                ("Camber", "-3.4 deg"),
+                ("Toe-in", r#"+1/64""#),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let left_rear = setup.get("Left Rear").unwrap();
+        assert_eq!(left_rear, &expected);
+
+        // In-Car Dials
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Display page", "Race 1"),
+                ("Brake pressure bias", "54.0%"),
+                ("Trac Ctrl (TCC) setting", "5 (TCC)"),
+                ("Trac Ctrl (TCR) setting", "5 (TCR)"),
+                ("Throttle Map setting", "4"),
+                ("ABS setting", "11 (ABS)"),
+                ("Engine map setting", "4 (MAP)"),
+                ("Night LED strips", "Blue"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let in_car_dials = setup.get("In-Car Dials").unwrap();
+        assert_eq!(in_car_dials, &expected);
+
+        // Right Front
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Corner weight", "605 lbs"),
+                ("Ride height", "2.034 in"),
+                ("Spring perch offset", r#"2.441""#),
+                ("Spring rate", "1371 lbs/in"),
+                ("LS Comp damping", "-6 clicks"),
+                ("HS Comp damping", "-10 clicks"),
+                ("LS Rbd damping", "-8 clicks"),
+                ("HS Rbd damping", "-10 clicks"),
+                ("Camber", "-4.0 deg"),
+                ("Caster", "+7.6 deg"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let right_front = setup.get("Right Front").unwrap();
+        assert_eq!(right_front, &expected);
+
+        // Right Rear
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("Corner weight", "945 lbs"),
+                ("Ride height", "3.026 in"),
+                ("Spring perch offset", r#"2.717""#),
+                ("Spring rate", "1600 lbs/in"),
+                ("LS Comp damping", "-6 clicks"),
+                ("HS Comp damping", "-10 clicks"),
+                ("LS Rbd damping", "-8 clicks"),
+                ("HS Rbd damping", "-10 clicks"),
+                ("Camber", "-3.4 deg"),
+                ("Toe-in", r#"+1/64""#),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let right_rear = setup.get("Right Rear").unwrap();
+        assert_eq!(right_rear, &expected);
+
+        // Rear
+        let expected = ListOrderedMultimap::from_iter(
+            [
+                ("ARB diameter", "35 mm"),
+                ("ARB setting", "Med"),
+                ("Diff preload", "74 ft-lbs"),
+                ("Wing setting", "7 degrees"),
+            ]
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
+        let rear = setup.get("Rear").unwrap();
+        assert_eq!(rear, &expected);
     }
 }
