@@ -63,3 +63,7 @@ rev = "fd5b9ce83c9c6b0c8336b0ccfd50c801a6aa325a"
 [patch.crates-io.epi]
 git = "https://github.com/parasyte/egui.git"
 rev = "fd5b9ce83c9c6b0c8336b0ccfd50c801a6aa325a"
+
+[profile.release]
+codegen-units = 1
+lto = true
