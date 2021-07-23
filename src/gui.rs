@@ -361,7 +361,7 @@ impl Gui {
             .open(&mut self.about)
             .enabled(enabled)
             .collapsible(false)
-            .default_pos((200.0, 150.0))
+            .default_pos((175.0, 175.0))
             .fixed_size((350.0, 100.0))
             .show(ctx, |ui| {
                 ui.add_space(5.0);
@@ -585,7 +585,7 @@ impl Gui {
             egui::Window::new("Warning")
                 .open(&mut window_open)
                 .collapsible(false)
-                .default_pos((120.0, 120.0))
+                .default_pos((125.0, 125.0))
                 .fixed_size((width, height))
                 .show(ctx, |ui| {
                     ui.set_enabled(enabled);
