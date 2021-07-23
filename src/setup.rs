@@ -339,8 +339,13 @@ fn get_properties(mut node_ref: Option<kuchiki::NodeRef>) -> Props {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::iter::FromIterator;
     use winit::dpi::PhysicalSize;
+
+    fn create_ordered_multimap(list: &[(&str, &str)]) -> ListOrderedMultimap<String, String> {
+        list.iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect()
+    }
 
     #[test]
     fn test_load_dir() {
@@ -407,108 +412,85 @@ mod tests {
         assert_eq!(setup.keys().len(), 6);
 
         // Front
-        let expected = ListOrderedMultimap::from_iter(
-            [("Brake bias", "54%")]
-                .iter()
-                .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[("Brake bias", "54%")]);
         let front = setup.get("Front").unwrap();
         assert_eq!(front, &expected);
 
         // Left Front
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Cold pressure", "25.0 psi"),
-                ("Last hot pressure", "25.0 psi"),
-                ("Last temps O M I", "119F"),
-                ("Last temps O M I", "119F"),
-                ("Last temps O M I", "119F"),
-                ("Tread remaining", "100%"),
-                ("Tread remaining", "100%"),
-                ("Tread remaining", "100%"),
-                ("Corner weight", "301 lbs"),
-                ("Ride height", "1.95 in"),
-                ("Spring perch offset", "5 x 1/16 in."),
-                ("Camber", "-1.6 deg"),
-                ("Caster", "+12.2 deg"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Cold pressure", "25.0 psi"),
+            ("Last hot pressure", "25.0 psi"),
+            ("Last temps O M I", "119F"),
+            ("Last temps O M I", "119F"),
+            ("Last temps O M I", "119F"),
+            ("Tread remaining", "100%"),
+            ("Tread remaining", "100%"),
+            ("Tread remaining", "100%"),
+            ("Corner weight", "301 lbs"),
+            ("Ride height", "1.95 in"),
+            ("Spring perch offset", "5 x 1/16 in."),
+            ("Camber", "-1.6 deg"),
+            ("Caster", "+12.2 deg"),
+        ]);
         let left_front = setup.get("Left Front").unwrap();
         assert_eq!(left_front, &expected);
 
         // Left Rear
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Cold pressure", "25.0 psi"),
-                ("Last hot pressure", "25.0 psi"),
-                ("Last temps O M I", "119F"),
-                ("Last temps O M I", "119F"),
-                ("Last temps O M I", "119F"),
-                ("Tread remaining", "100%"),
-                ("Tread remaining", "100%"),
-                ("Tread remaining", "100%"),
-                ("Corner weight", "438 lbs"),
-                ("Ride height", "3.20 in"),
-                ("Camber", "-2.1 deg"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Cold pressure", "25.0 psi"),
+            ("Last hot pressure", "25.0 psi"),
+            ("Last temps O M I", "119F"),
+            ("Last temps O M I", "119F"),
+            ("Last temps O M I", "119F"),
+            ("Tread remaining", "100%"),
+            ("Tread remaining", "100%"),
+            ("Tread remaining", "100%"),
+            ("Corner weight", "438 lbs"),
+            ("Ride height", "3.20 in"),
+            ("Camber", "-2.1 deg"),
+        ]);
         let left_rear = setup.get("Left Rear").unwrap();
         assert_eq!(left_rear, &expected);
 
         // Right Front
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Cold pressure", "25.0 psi"),
-                ("Last hot pressure", "25.0 psi"),
-                ("Last temps I M O", "119F"),
-                ("Last temps I M O", "119F"),
-                ("Last temps I M O", "119F"),
-                ("Tread remaining", "100%"),
-                ("Tread remaining", "100%"),
-                ("Tread remaining", "100%"),
-                ("Corner weight", "301 lbs"),
-                ("Ride height", "1.95 in"),
-                ("Spring perch offset", "5 x 1/16 in."),
-                ("Camber", "-1.6 deg"),
-                ("Caster", "+12.2 deg"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Cold pressure", "25.0 psi"),
+            ("Last hot pressure", "25.0 psi"),
+            ("Last temps I M O", "119F"),
+            ("Last temps I M O", "119F"),
+            ("Last temps I M O", "119F"),
+            ("Tread remaining", "100%"),
+            ("Tread remaining", "100%"),
+            ("Tread remaining", "100%"),
+            ("Corner weight", "301 lbs"),
+            ("Ride height", "1.95 in"),
+            ("Spring perch offset", "5 x 1/16 in."),
+            ("Camber", "-1.6 deg"),
+            ("Caster", "+12.2 deg"),
+        ]);
         let right_front = setup.get("Right Front").unwrap();
         assert_eq!(right_front, &expected);
 
         // Right Rear
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Cold pressure", "25.0 psi"),
-                ("Last hot pressure", "25.0 psi"),
-                ("Last temps I M O", "119F"),
-                ("Last temps I M O", "119F"),
-                ("Last temps I M O", "119F"),
-                ("Tread remaining", "100%"),
-                ("Tread remaining", "100%"),
-                ("Tread remaining", "100%"),
-                ("Corner weight", "438 lbs"),
-                ("Ride height", "3.20 in"),
-                ("Camber", "-2.1 deg"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Cold pressure", "25.0 psi"),
+            ("Last hot pressure", "25.0 psi"),
+            ("Last temps I M O", "119F"),
+            ("Last temps I M O", "119F"),
+            ("Last temps I M O", "119F"),
+            ("Tread remaining", "100%"),
+            ("Tread remaining", "100%"),
+            ("Tread remaining", "100%"),
+            ("Corner weight", "438 lbs"),
+            ("Ride height", "3.20 in"),
+            ("Camber", "-2.1 deg"),
+        ]);
         let right_rear = setup.get("Right Rear").unwrap();
         assert_eq!(right_rear, &expected);
 
         // Rear
-        let expected = ListOrderedMultimap::from_iter(
-            [("Fuel level", "4.2 gal"), ("Anti-roll bar", "6")]
-                .iter()
-                .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected =
+            create_ordered_multimap(&[("Fuel level", "4.2 gal"), ("Anti-roll bar", "6")]);
         let rear = setup.get("Rear").unwrap();
         assert_eq!(rear, &expected);
     }
@@ -524,124 +506,100 @@ mod tests {
         assert_eq!(setup.keys().len(), 6);
 
         // Front
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Toe-in", r#"-0/16""#),
-                ("Cross weight", "50.0%"),
-                ("Anti-roll bar", "Firm"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Toe-in", r#"-0/16""#),
+            ("Cross weight", "50.0%"),
+            ("Anti-roll bar", "Firm"),
+        ]);
         let front = setup.get("Front").unwrap();
         assert_eq!(front, &expected);
 
         // Left Front
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Cold pressure", "30.0 psi"),
-                ("Last hot pressure", "30.0 psi"),
-                ("Last temps O M I", "103F"),
-                ("Last temps O M I", "103F"),
-                ("Last temps O M I", "103F"),
-                ("Tread remaining", "100%"),
-                ("Tread remaining", "100%"),
-                ("Tread remaining", "100%"),
-                ("Corner weight", "605 lbs"),
-                ("Ride height", "4.83 in"),
-                ("Spring perch offset", r#"2.563""#),
-                ("Bump stiffness", "+10 clicks"),
-                ("Rebound stiffness", "+8 clicks"),
-                ("Camber", "-2.7 deg"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Cold pressure", "30.0 psi"),
+            ("Last hot pressure", "30.0 psi"),
+            ("Last temps O M I", "103F"),
+            ("Last temps O M I", "103F"),
+            ("Last temps O M I", "103F"),
+            ("Tread remaining", "100%"),
+            ("Tread remaining", "100%"),
+            ("Tread remaining", "100%"),
+            ("Corner weight", "605 lbs"),
+            ("Ride height", "4.83 in"),
+            ("Spring perch offset", r#"2.563""#),
+            ("Bump stiffness", "+10 clicks"),
+            ("Rebound stiffness", "+8 clicks"),
+            ("Camber", "-2.7 deg"),
+        ]);
         let left_front = setup.get("Left Front").unwrap();
         assert_eq!(left_front, &expected);
 
         // Left Rear
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Cold pressure", "30.0 psi"),
-                ("Last hot pressure", "30.0 psi"),
-                ("Last temps O M I", "103F"),
-                ("Last temps O M I", "103F"),
-                ("Last temps O M I", "103F"),
-                ("Tread remaining", "100%"),
-                ("Tread remaining", "100%"),
-                ("Tread remaining", "100%"),
-                ("Corner weight", "540 lbs"),
-                ("Ride height", "4.86 in"),
-                ("Spring perch offset", r#"1.625""#),
-                ("Bump stiffness", "+8 clicks"),
-                ("Rebound stiffness", "+10 clicks"),
-                ("Camber", "-2.7 deg"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Cold pressure", "30.0 psi"),
+            ("Last hot pressure", "30.0 psi"),
+            ("Last temps O M I", "103F"),
+            ("Last temps O M I", "103F"),
+            ("Last temps O M I", "103F"),
+            ("Tread remaining", "100%"),
+            ("Tread remaining", "100%"),
+            ("Tread remaining", "100%"),
+            ("Corner weight", "540 lbs"),
+            ("Ride height", "4.86 in"),
+            ("Spring perch offset", r#"1.625""#),
+            ("Bump stiffness", "+8 clicks"),
+            ("Rebound stiffness", "+10 clicks"),
+            ("Camber", "-2.7 deg"),
+        ]);
         let left_rear = setup.get("Left Rear").unwrap();
         assert_eq!(left_rear, &expected);
 
         // Right Front
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Cold pressure", "30.0 psi"),
-                ("Last hot pressure", "30.0 psi"),
-                ("Last temps I M O", "103F"),
-                ("Last temps I M O", "103F"),
-                ("Last temps I M O", "103F"),
-                ("Tread remaining", "100%"),
-                ("Tread remaining", "100%"),
-                ("Tread remaining", "100%"),
-                ("Corner weight", "552 lbs"),
-                ("Ride height", "4.84 in"),
-                ("Spring perch offset", r#"2.781""#),
-                ("Bump stiffness", "+10 clicks"),
-                ("Rebound stiffness", "+8 clicks"),
-                ("Camber", "-2.7 deg"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Cold pressure", "30.0 psi"),
+            ("Last hot pressure", "30.0 psi"),
+            ("Last temps I M O", "103F"),
+            ("Last temps I M O", "103F"),
+            ("Last temps I M O", "103F"),
+            ("Tread remaining", "100%"),
+            ("Tread remaining", "100%"),
+            ("Tread remaining", "100%"),
+            ("Corner weight", "552 lbs"),
+            ("Ride height", "4.84 in"),
+            ("Spring perch offset", r#"2.781""#),
+            ("Bump stiffness", "+10 clicks"),
+            ("Rebound stiffness", "+8 clicks"),
+            ("Camber", "-2.7 deg"),
+        ]);
         let right_front = setup.get("Right Front").unwrap();
         assert_eq!(right_front, &expected);
 
         // Right Rear
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Cold pressure", "30.0 psi"),
-                ("Last hot pressure", "30.0 psi"),
-                ("Last temps I M O", "103F"),
-                ("Last temps I M O", "103F"),
-                ("Last temps I M O", "103F"),
-                ("Tread remaining", "100%"),
-                ("Tread remaining", "100%"),
-                ("Tread remaining", "100%"),
-                ("Corner weight", "488 lbs"),
-                ("Ride height", "4.87 in"),
-                ("Spring perch offset", r#"1.844""#),
-                ("Bump stiffness", "+8 clicks"),
-                ("Rebound stiffness", "+10 clicks"),
-                ("Camber", "-2.7 deg"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Cold pressure", "30.0 psi"),
+            ("Last hot pressure", "30.0 psi"),
+            ("Last temps I M O", "103F"),
+            ("Last temps I M O", "103F"),
+            ("Last temps I M O", "103F"),
+            ("Tread remaining", "100%"),
+            ("Tread remaining", "100%"),
+            ("Tread remaining", "100%"),
+            ("Corner weight", "488 lbs"),
+            ("Ride height", "4.87 in"),
+            ("Spring perch offset", r#"1.844""#),
+            ("Bump stiffness", "+8 clicks"),
+            ("Rebound stiffness", "+10 clicks"),
+            ("Camber", "-2.7 deg"),
+        ]);
         let right_rear = setup.get("Right Rear").unwrap();
         assert_eq!(right_rear, &expected);
 
         // Rear
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Fuel level", "5.3 gal"),
-                ("Toe-in", r#"+2/16""#),
-                ("Anti-roll bar", "Unhooked"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Fuel level", "5.3 gal"),
+            ("Toe-in", r#"+2/16""#),
+            ("Anti-roll bar", "Unhooked"),
+        ]);
         let rear = setup.get("Rear").unwrap();
         assert_eq!(rear, &expected);
     }
@@ -657,324 +615,253 @@ mod tests {
         assert_eq!(setup.keys().len(), 18);
 
         // Left Front Tire
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Starting pressure", "20.0 psi"),
-                ("Last hot pressure", "22.0 psi"),
-                ("Last temps O M I", "178F"),
-                ("Last temps O M I", "182F"),
-                ("Last temps O M I", "187F"),
-                ("Tread remaining", "99%"),
-                ("Tread remaining", "98%"),
-                ("Tread remaining", "98%"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Starting pressure", "20.0 psi"),
+            ("Last hot pressure", "22.0 psi"),
+            ("Last temps O M I", "178F"),
+            ("Last temps O M I", "182F"),
+            ("Last temps O M I", "187F"),
+            ("Tread remaining", "99%"),
+            ("Tread remaining", "98%"),
+            ("Tread remaining", "98%"),
+        ]);
         let left_front_tire = setup.get("Left Front Tire").unwrap();
         assert_eq!(left_front_tire, &expected);
 
         // Left Rear Tire
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Starting pressure", "20.0 psi"),
-                ("Last hot pressure", "22.3 psi"),
-                ("Last temps O M I", "186F"),
-                ("Last temps O M I", "196F"),
-                ("Last temps O M I", "200F"),
-                ("Tread remaining", "98%"),
-                ("Tread remaining", "97%"),
-                ("Tread remaining", "97%"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Starting pressure", "20.0 psi"),
+            ("Last hot pressure", "22.3 psi"),
+            ("Last temps O M I", "186F"),
+            ("Last temps O M I", "196F"),
+            ("Last temps O M I", "200F"),
+            ("Tread remaining", "98%"),
+            ("Tread remaining", "97%"),
+            ("Tread remaining", "97%"),
+        ]);
         let left_rear_tire = setup.get("Left Rear Tire").unwrap();
         assert_eq!(left_rear_tire, &expected);
 
         // Right Front Tire
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Starting pressure", "20.0 psi"),
-                ("Last hot pressure", "21.8 psi"),
-                ("Last temps I M O", "183F"),
-                ("Last temps I M O", "179F"),
-                ("Last temps I M O", "173F"),
-                ("Tread remaining", "98%"),
-                ("Tread remaining", "98%"),
-                ("Tread remaining", "99%"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Starting pressure", "20.0 psi"),
+            ("Last hot pressure", "21.8 psi"),
+            ("Last temps I M O", "183F"),
+            ("Last temps I M O", "179F"),
+            ("Last temps I M O", "173F"),
+            ("Tread remaining", "98%"),
+            ("Tread remaining", "98%"),
+            ("Tread remaining", "99%"),
+        ]);
         let right_front_tire = setup.get("Right Front Tire").unwrap();
         assert_eq!(right_front_tire, &expected);
 
         // Right Rear Tire
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Starting pressure", "20.0 psi"),
-                ("Last hot pressure", "22.1 psi"),
-                ("Last temps I M O", "199F"),
-                ("Last temps I M O", "195F"),
-                ("Last temps I M O", "182F"),
-                ("Tread remaining", "97%"),
-                ("Tread remaining", "97%"),
-                ("Tread remaining", "98%"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Starting pressure", "20.0 psi"),
+            ("Last hot pressure", "22.1 psi"),
+            ("Last temps I M O", "199F"),
+            ("Last temps I M O", "195F"),
+            ("Last temps I M O", "182F"),
+            ("Tread remaining", "97%"),
+            ("Tread remaining", "97%"),
+            ("Tread remaining", "98%"),
+        ]);
         let right_rear_tire = setup.get("Right Rear Tire").unwrap();
         assert_eq!(right_rear_tire, &expected);
 
         // Aero Settings
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Downforce trim", "Low"),
-                ("Rear wing angle", "12 deg"),
-                ("# of dive planes", "1"),
-                ("Wing gurney setting", "Off"),
-                ("Deck gurney setting", "Off"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Downforce trim", "Low"),
+            ("Rear wing angle", "12 deg"),
+            ("# of dive planes", "1"),
+            ("Wing gurney setting", "Off"),
+            ("Deck gurney setting", "Off"),
+        ]);
         let aero_settings = setup.get("Aero Settings").unwrap();
         assert_eq!(aero_settings, &expected);
 
         // Aero Calculator
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Front RH at speed", r#"1.417""#),
-                ("Rear RH at speed", r#"0.945""#),
-                ("Downforce balance", "41.67%"),
-                ("L/D", "4.991"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Front RH at speed", r#"1.417""#),
+            ("Rear RH at speed", r#"0.945""#),
+            ("Downforce balance", "41.67%"),
+            ("L/D", "4.991"),
+        ]);
         let aero_calculator = setup.get("Aero Calculator").unwrap();
         assert_eq!(aero_calculator, &expected);
 
         // Front
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Third spring", "1143 lbs/in"),
-                ("Third perch offset", r#"0.886""#),
-                ("Third spring defl", "0.183 in"),
-                ("Third spring defl", "of"),
-                ("Third spring defl", "2.539 in"),
-                ("Third slider defl", "0.975 in"),
-                ("Third slider defl", "of"),
-                ("Third slider defl", "3.937 in"),
-                ("ARB size", "Medium"),
-                ("ARB blades", "P4"),
-                ("Toe-in", r#"-2/32""#),
-                ("Third pin length", r#"7.480""#),
-                ("Front pushrod length", r#"7.323""#),
-                ("Power steering assist", "3"),
-                ("Steering ratio", "11.0"),
-                ("Display page", "Race1"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Third spring", "1143 lbs/in"),
+            ("Third perch offset", r#"0.886""#),
+            ("Third spring defl", "0.183 in"),
+            ("Third spring defl", "of"),
+            ("Third spring defl", "2.539 in"),
+            ("Third slider defl", "0.975 in"),
+            ("Third slider defl", "of"),
+            ("Third slider defl", "3.937 in"),
+            ("ARB size", "Medium"),
+            ("ARB blades", "P4"),
+            ("Toe-in", r#"-2/32""#),
+            ("Third pin length", r#"7.480""#),
+            ("Front pushrod length", r#"7.323""#),
+            ("Power steering assist", "3"),
+            ("Steering ratio", "11.0"),
+            ("Display page", "Race1"),
+        ]);
         let front = setup.get("Front").unwrap();
         assert_eq!(front, &expected);
 
         // Left Front
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Corner weight", "528 lbs"),
-                ("Ride height", "1.771 in"),
-                ("Shock defl", "0.612 in"),
-                ("Shock defl", "of"),
-                ("Shock defl", "1.969 in"),
-                ("Torsion bar defl", "0.362 in"),
-                ("Torsion bar turns", "2.750 Turns"),
-                ("Torsion bar O.D.", "13.90 mm"),
-                ("LS comp damping", "4 clicks"),
-                ("HS comp damping", "3 clicks"),
-                ("HS comp damp slope", "9 clicks"),
-                ("LS rbd damping", "5 clicks"),
-                ("HS rbd damping", "9 clicks"),
-                ("Camber", "-2.5 deg"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Corner weight", "528 lbs"),
+            ("Ride height", "1.771 in"),
+            ("Shock defl", "0.612 in"),
+            ("Shock defl", "of"),
+            ("Shock defl", "1.969 in"),
+            ("Torsion bar defl", "0.362 in"),
+            ("Torsion bar turns", "2.750 Turns"),
+            ("Torsion bar O.D.", "13.90 mm"),
+            ("LS comp damping", "4 clicks"),
+            ("HS comp damping", "3 clicks"),
+            ("HS comp damp slope", "9 clicks"),
+            ("LS rbd damping", "5 clicks"),
+            ("HS rbd damping", "9 clicks"),
+            ("Camber", "-2.5 deg"),
+        ]);
         let left_front = setup.get("Left Front").unwrap();
         assert_eq!(left_front, &expected);
 
         // Left Rear
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Corner weight", "652 lbs"),
-                ("Ride height", "1.748 in"),
-                ("Shock defl", "1.478 in"),
-                ("Shock defl", "of"),
-                ("Shock defl", "2.953 in"),
-                ("Spring defl", "0.604 in"),
-                ("Spring defl", "of"),
-                ("Spring defl", "3.525 in"),
-                ("Spring perch offset", r#"1.969""#),
-                ("Spring rate", "600 lbs/in"),
-                ("LS comp damping", "5 clicks"),
-                ("HS comp damping", "3 clicks"),
-                ("HS comp damp slope", "9 clicks"),
-                ("LS rbd damping", "8 clicks"),
-                ("HS rbd damping", "9 clicks"),
-                ("Camber", "-1.5 deg"),
-                ("Toe-in", r#"+0/32""#),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Corner weight", "652 lbs"),
+            ("Ride height", "1.748 in"),
+            ("Shock defl", "1.478 in"),
+            ("Shock defl", "of"),
+            ("Shock defl", "2.953 in"),
+            ("Spring defl", "0.604 in"),
+            ("Spring defl", "of"),
+            ("Spring defl", "3.525 in"),
+            ("Spring perch offset", r#"1.969""#),
+            ("Spring rate", "600 lbs/in"),
+            ("LS comp damping", "5 clicks"),
+            ("HS comp damping", "3 clicks"),
+            ("HS comp damp slope", "9 clicks"),
+            ("LS rbd damping", "8 clicks"),
+            ("HS rbd damping", "9 clicks"),
+            ("Camber", "-1.5 deg"),
+            ("Toe-in", r#"+0/32""#),
+        ]);
         let left_rear = setup.get("Left Rear").unwrap();
         assert_eq!(left_rear, &expected);
 
         // Right Front
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Corner weight", "528 lbs"),
-                ("Ride height", "1.771 in"),
-                ("Shock defl", "0.612 in"),
-                ("Shock defl", "of"),
-                ("Shock defl", "1.969 in"),
-                ("Torsion bar defl", "0.362 in"),
-                ("Torsion bar turns", "2.750 Turns"),
-                ("Torsion bar O.D.", "13.90 mm"),
-                ("LS comp damping", "4 clicks"),
-                ("HS comp damping", "3 clicks"),
-                ("HS comp damp slope", "9 clicks"),
-                ("LS rbd damping", "5 clicks"),
-                ("HS rbd damping", "9 clicks"),
-                ("Camber", "-2.5 deg"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Corner weight", "528 lbs"),
+            ("Ride height", "1.771 in"),
+            ("Shock defl", "0.612 in"),
+            ("Shock defl", "of"),
+            ("Shock defl", "1.969 in"),
+            ("Torsion bar defl", "0.362 in"),
+            ("Torsion bar turns", "2.750 Turns"),
+            ("Torsion bar O.D.", "13.90 mm"),
+            ("LS comp damping", "4 clicks"),
+            ("HS comp damping", "3 clicks"),
+            ("HS comp damp slope", "9 clicks"),
+            ("LS rbd damping", "5 clicks"),
+            ("HS rbd damping", "9 clicks"),
+            ("Camber", "-2.5 deg"),
+        ]);
         let right_front = setup.get("Right Front").unwrap();
         assert_eq!(right_front, &expected);
 
         // Right Rear
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Corner weight", "652 lbs"),
-                ("Ride height", "1.748 in"),
-                ("Shock defl", "1.478 in"),
-                ("Shock defl", "of"),
-                ("Shock defl", "2.953 in"),
-                ("Spring defl", "0.604 in"),
-                ("Spring defl", "of"),
-                ("Spring defl", "3.525 in"),
-                ("Spring perch offset", r#"1.969""#),
-                ("Spring rate", "600 lbs/in"),
-                ("LS comp damping", "5 clicks"),
-                ("HS comp damping", "3 clicks"),
-                ("HS comp damp slope", "9 clicks"),
-                ("LS rbd damping", "8 clicks"),
-                ("HS rbd damping", "9 clicks"),
-                ("Camber", "-1.5 deg"),
-                ("Toe-in", r#"+0/32""#),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Corner weight", "652 lbs"),
+            ("Ride height", "1.748 in"),
+            ("Shock defl", "1.478 in"),
+            ("Shock defl", "of"),
+            ("Shock defl", "2.953 in"),
+            ("Spring defl", "0.604 in"),
+            ("Spring defl", "of"),
+            ("Spring defl", "3.525 in"),
+            ("Spring perch offset", r#"1.969""#),
+            ("Spring rate", "600 lbs/in"),
+            ("LS comp damping", "5 clicks"),
+            ("HS comp damping", "3 clicks"),
+            ("HS comp damp slope", "9 clicks"),
+            ("LS rbd damping", "8 clicks"),
+            ("HS rbd damping", "9 clicks"),
+            ("Camber", "-1.5 deg"),
+            ("Toe-in", r#"+0/32""#),
+        ]);
         let right_rear = setup.get("Right Rear").unwrap();
         assert_eq!(right_rear, &expected);
 
         // Rear
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Third spring", "800 lbs/in"),
-                ("Third perch offset", r#"1.358""#),
-                ("Third spring defl", "0.247 in"),
-                ("Third spring defl", "of"),
-                ("Third spring defl", "3.266 in"),
-                ("Third slider defl", "2.480 in"),
-                ("Third slider defl", "of"),
-                ("Third slider defl", "5.906 in"),
-                ("ARB size", "Medium"),
-                ("ARB blades", "P5"),
-                ("Rear pushrod length", r#"6.516""#),
-                ("Third pin length", r#"6.890""#),
-                ("Cross weight", "50.0%"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Third spring", "800 lbs/in"),
+            ("Third perch offset", r#"1.358""#),
+            ("Third spring defl", "0.247 in"),
+            ("Third spring defl", "of"),
+            ("Third spring defl", "3.266 in"),
+            ("Third slider defl", "2.480 in"),
+            ("Third slider defl", "of"),
+            ("Third slider defl", "5.906 in"),
+            ("ARB size", "Medium"),
+            ("ARB blades", "P5"),
+            ("Rear pushrod length", r#"6.516""#),
+            ("Third pin length", r#"6.890""#),
+            ("Cross weight", "50.0%"),
+        ]);
         let rear = setup.get("Rear").unwrap();
         assert_eq!(rear, &expected);
 
         // Lighting
-        let expected = ListOrderedMultimap::from_iter(
-            [("Roof ID light color", "Blue")]
-                .iter()
-                .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[("Roof ID light color", "Blue")]);
         let lighting = setup.get("Lighting").unwrap();
         assert_eq!(lighting, &expected);
 
         // Brake Spec
-        let expected = ListOrderedMultimap::from_iter(
-            [("Pad compound", "High"), ("Brake pressure bias", "48.8%")]
-                .iter()
-                .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected =
+            create_ordered_multimap(&[("Pad compound", "High"), ("Brake pressure bias", "48.8%")]);
         let brake_spec = setup.get("Brake Spec").unwrap();
         assert_eq!(brake_spec, &expected);
 
         // Fuel
-        let expected = ListOrderedMultimap::from_iter(
-            [("Fuel level", "19.8 gal")]
-                .iter()
-                .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[("Fuel level", "19.8 gal")]);
         let fuel = setup.get("Fuel").unwrap();
         assert_eq!(fuel, &expected);
 
         // Traction Control
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Traction control gain", "3 (TC)"),
-                ("Traction control slip", "2 (TC)"),
-                ("Throttle shape", "1"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Traction control gain", "3 (TC)"),
+            ("Traction control slip", "2 (TC)"),
+            ("Throttle shape", "1"),
+        ]);
         let fuel = setup.get("Traction Control").unwrap();
         assert_eq!(fuel, &expected);
 
         // Gear Ratios
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Gear stack", "Tall"),
-                ("Speed in first", "86.7 mph"),
-                ("Speed in second", "112.1 mph"),
-                ("Speed in third", "131.6 mph"),
-                ("Speed in forth", "156.3 mph"),
-                ("Speed in fifth", "182.7 mph"),
-                ("Speed in sixth", "210.2 mph"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Gear stack", "Tall"),
+            ("Speed in first", "86.7 mph"),
+            ("Speed in second", "112.1 mph"),
+            ("Speed in third", "131.6 mph"),
+            ("Speed in forth", "156.3 mph"),
+            ("Speed in fifth", "182.7 mph"),
+            ("Speed in sixth", "210.2 mph"),
+        ]);
         let gear_ratios = setup.get("Gear Ratios").unwrap();
         assert_eq!(gear_ratios, &expected);
 
         // Rear Diff Spec
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Drive/coast ramp angles", "45/55"),
-                ("Clutch friction faces", "10"),
-                ("Preload", "81 ft-lbs"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Drive/coast ramp angles", "45/55"),
+            ("Clutch friction faces", "10"),
+            ("Preload", "81 ft-lbs"),
+        ]);
         let rear_diff_spec = setup.get("Rear Diff Spec").unwrap();
         assert_eq!(rear_diff_spec, &expected);
     }
@@ -990,218 +877,170 @@ mod tests {
         assert_eq!(setup.keys().len(), 12);
 
         // Left Front Tire
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Starting pressure", "20.5 psi"),
-                ("Last hot pressure", "20.5 psi"),
-                ("Last temps O M I", "112F"),
-                ("Last temps O M I", "112F"),
-                ("Last temps O M I", "112F"),
-                ("Tread remaining", "100%"),
-                ("Tread remaining", "100%"),
-                ("Tread remaining", "100%"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Starting pressure", "20.5 psi"),
+            ("Last hot pressure", "20.5 psi"),
+            ("Last temps O M I", "112F"),
+            ("Last temps O M I", "112F"),
+            ("Last temps O M I", "112F"),
+            ("Tread remaining", "100%"),
+            ("Tread remaining", "100%"),
+            ("Tread remaining", "100%"),
+        ]);
         let left_front_tire = setup.get("Left Front Tire").unwrap();
         assert_eq!(left_front_tire, &expected);
 
         // Left Rear Tire
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Starting pressure", "20.5 psi"),
-                ("Last hot pressure", "20.5 psi"),
-                ("Last temps O M I", "112F"),
-                ("Last temps O M I", "112F"),
-                ("Last temps O M I", "112F"),
-                ("Tread remaining", "100%"),
-                ("Tread remaining", "100%"),
-                ("Tread remaining", "100%"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Starting pressure", "20.5 psi"),
+            ("Last hot pressure", "20.5 psi"),
+            ("Last temps O M I", "112F"),
+            ("Last temps O M I", "112F"),
+            ("Last temps O M I", "112F"),
+            ("Tread remaining", "100%"),
+            ("Tread remaining", "100%"),
+            ("Tread remaining", "100%"),
+        ]);
         let left_rear_tire = setup.get("Left Rear Tire").unwrap();
         assert_eq!(left_rear_tire, &expected);
 
         // Right Front Tire
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Starting pressure", "20.5 psi"),
-                ("Last hot pressure", "20.5 psi"),
-                ("Last temps I M O", "112F"),
-                ("Last temps I M O", "112F"),
-                ("Last temps I M O", "112F"),
-                ("Tread remaining", "100%"),
-                ("Tread remaining", "100%"),
-                ("Tread remaining", "100%"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Starting pressure", "20.5 psi"),
+            ("Last hot pressure", "20.5 psi"),
+            ("Last temps I M O", "112F"),
+            ("Last temps I M O", "112F"),
+            ("Last temps I M O", "112F"),
+            ("Tread remaining", "100%"),
+            ("Tread remaining", "100%"),
+            ("Tread remaining", "100%"),
+        ]);
         let right_front_tire = setup.get("Right Front Tire").unwrap();
         assert_eq!(right_front_tire, &expected);
 
         // Right Rear Tire
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Starting pressure", "20.5 psi"),
-                ("Last hot pressure", "20.5 psi"),
-                ("Last temps I M O", "112F"),
-                ("Last temps I M O", "112F"),
-                ("Last temps I M O", "112F"),
-                ("Tread remaining", "100%"),
-                ("Tread remaining", "100%"),
-                ("Tread remaining", "100%"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Starting pressure", "20.5 psi"),
+            ("Last hot pressure", "20.5 psi"),
+            ("Last temps I M O", "112F"),
+            ("Last temps I M O", "112F"),
+            ("Last temps I M O", "112F"),
+            ("Tread remaining", "100%"),
+            ("Tread remaining", "100%"),
+            ("Tread remaining", "100%"),
+        ]);
         let right_rear_tire = setup.get("Right Rear Tire").unwrap();
         assert_eq!(right_rear_tire, &expected);
 
         // Aero Balance Calc
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Front RH at speed", r#"1.929""#),
-                ("Rear RH at speed", r#"2.835""#),
-                ("Wing setting", "7 degrees"),
-                ("Front downforce", "39.83%"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Front RH at speed", r#"1.929""#),
+            ("Rear RH at speed", r#"2.835""#),
+            ("Wing setting", "7 degrees"),
+            ("Front downforce", "39.83%"),
+        ]);
         let aero_balance_calc = setup.get("Aero Balance Calc").unwrap();
         assert_eq!(aero_balance_calc, &expected);
 
         // Front
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("ARB diameter", "45 mm"),
-                ("ARB setting", "Soft"),
-                ("Toe-in", r#"-2/32""#),
-                ("Front master cyl.", "0.811 in"),
-                ("Rear master cyl.", "0.811 in"),
-                ("Brake pads", "Medium friction"),
-                ("Fuel level", "15.9 gal"),
-                ("Cross weight", "50.0%"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("ARB diameter", "45 mm"),
+            ("ARB setting", "Soft"),
+            ("Toe-in", r#"-2/32""#),
+            ("Front master cyl.", "0.811 in"),
+            ("Rear master cyl.", "0.811 in"),
+            ("Brake pads", "Medium friction"),
+            ("Fuel level", "15.9 gal"),
+            ("Cross weight", "50.0%"),
+        ]);
         let front = setup.get("Front").unwrap();
         assert_eq!(front, &expected);
 
         // Left Front
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Corner weight", "605 lbs"),
-                ("Ride height", "2.034 in"),
-                ("Spring perch offset", r#"2.441""#),
-                ("Spring rate", "1371 lbs/in"),
-                ("LS Comp damping", "-6 clicks"),
-                ("HS Comp damping", "-10 clicks"),
-                ("LS Rbd damping", "-8 clicks"),
-                ("HS Rbd damping", "-10 clicks"),
-                ("Camber", "-4.0 deg"),
-                ("Caster", "+7.6 deg"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Corner weight", "605 lbs"),
+            ("Ride height", "2.034 in"),
+            ("Spring perch offset", r#"2.441""#),
+            ("Spring rate", "1371 lbs/in"),
+            ("LS Comp damping", "-6 clicks"),
+            ("HS Comp damping", "-10 clicks"),
+            ("LS Rbd damping", "-8 clicks"),
+            ("HS Rbd damping", "-10 clicks"),
+            ("Camber", "-4.0 deg"),
+            ("Caster", "+7.6 deg"),
+        ]);
         let left_front = setup.get("Left Front").unwrap();
         assert_eq!(left_front, &expected);
 
         // Left Rear
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Corner weight", "945 lbs"),
-                ("Ride height", "3.026 in"),
-                ("Spring perch offset", r#"2.717""#),
-                ("Spring rate", "1600 lbs/in"),
-                ("LS Comp damping", "-6 clicks"),
-                ("HS Comp damping", "-10 clicks"),
-                ("LS Rbd damping", "-8 clicks"),
-                ("HS Rbd damping", "-10 clicks"),
-                ("Camber", "-3.4 deg"),
-                ("Toe-in", r#"+1/64""#),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Corner weight", "945 lbs"),
+            ("Ride height", "3.026 in"),
+            ("Spring perch offset", r#"2.717""#),
+            ("Spring rate", "1600 lbs/in"),
+            ("LS Comp damping", "-6 clicks"),
+            ("HS Comp damping", "-10 clicks"),
+            ("LS Rbd damping", "-8 clicks"),
+            ("HS Rbd damping", "-10 clicks"),
+            ("Camber", "-3.4 deg"),
+            ("Toe-in", r#"+1/64""#),
+        ]);
         let left_rear = setup.get("Left Rear").unwrap();
         assert_eq!(left_rear, &expected);
 
         // In-Car Dials
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Display page", "Race 1"),
-                ("Brake pressure bias", "54.0%"),
-                ("Trac Ctrl (TCC) setting", "5 (TCC)"),
-                ("Trac Ctrl (TCR) setting", "5 (TCR)"),
-                ("Throttle Map setting", "4"),
-                ("ABS setting", "11 (ABS)"),
-                ("Engine map setting", "4 (MAP)"),
-                ("Night LED strips", "Blue"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Display page", "Race 1"),
+            ("Brake pressure bias", "54.0%"),
+            ("Trac Ctrl (TCC) setting", "5 (TCC)"),
+            ("Trac Ctrl (TCR) setting", "5 (TCR)"),
+            ("Throttle Map setting", "4"),
+            ("ABS setting", "11 (ABS)"),
+            ("Engine map setting", "4 (MAP)"),
+            ("Night LED strips", "Blue"),
+        ]);
         let in_car_dials = setup.get("In-Car Dials").unwrap();
         assert_eq!(in_car_dials, &expected);
 
         // Right Front
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Corner weight", "605 lbs"),
-                ("Ride height", "2.034 in"),
-                ("Spring perch offset", r#"2.441""#),
-                ("Spring rate", "1371 lbs/in"),
-                ("LS Comp damping", "-6 clicks"),
-                ("HS Comp damping", "-10 clicks"),
-                ("LS Rbd damping", "-8 clicks"),
-                ("HS Rbd damping", "-10 clicks"),
-                ("Camber", "-4.0 deg"),
-                ("Caster", "+7.6 deg"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Corner weight", "605 lbs"),
+            ("Ride height", "2.034 in"),
+            ("Spring perch offset", r#"2.441""#),
+            ("Spring rate", "1371 lbs/in"),
+            ("LS Comp damping", "-6 clicks"),
+            ("HS Comp damping", "-10 clicks"),
+            ("LS Rbd damping", "-8 clicks"),
+            ("HS Rbd damping", "-10 clicks"),
+            ("Camber", "-4.0 deg"),
+            ("Caster", "+7.6 deg"),
+        ]);
         let right_front = setup.get("Right Front").unwrap();
         assert_eq!(right_front, &expected);
 
         // Right Rear
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("Corner weight", "945 lbs"),
-                ("Ride height", "3.026 in"),
-                ("Spring perch offset", r#"2.717""#),
-                ("Spring rate", "1600 lbs/in"),
-                ("LS Comp damping", "-6 clicks"),
-                ("HS Comp damping", "-10 clicks"),
-                ("LS Rbd damping", "-8 clicks"),
-                ("HS Rbd damping", "-10 clicks"),
-                ("Camber", "-3.4 deg"),
-                ("Toe-in", r#"+1/64""#),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("Corner weight", "945 lbs"),
+            ("Ride height", "3.026 in"),
+            ("Spring perch offset", r#"2.717""#),
+            ("Spring rate", "1600 lbs/in"),
+            ("LS Comp damping", "-6 clicks"),
+            ("HS Comp damping", "-10 clicks"),
+            ("LS Rbd damping", "-8 clicks"),
+            ("HS Rbd damping", "-10 clicks"),
+            ("Camber", "-3.4 deg"),
+            ("Toe-in", r#"+1/64""#),
+        ]);
         let right_rear = setup.get("Right Rear").unwrap();
         assert_eq!(right_rear, &expected);
 
         // Rear
-        let expected = ListOrderedMultimap::from_iter(
-            [
-                ("ARB diameter", "35 mm"),
-                ("ARB setting", "Med"),
-                ("Diff preload", "74 ft-lbs"),
-                ("Wing setting", "7 degrees"),
-            ]
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string())),
-        );
+        let expected = create_ordered_multimap(&[
+            ("ARB diameter", "35 mm"),
+            ("ARB setting", "Med"),
+            ("Diff preload", "74 ft-lbs"),
+            ("Wing setting", "7 degrees"),
+        ]);
         let rear = setup.get("Rear").unwrap();
         assert_eq!(rear, &expected);
     }

@@ -1,0 +1,83 @@
+name: Mean Bean CI
+
+on: [push, pull_request]
+
+jobs:
+  lints:
+    name: Lints
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 50
+      - name: Update apt repos
+        run: sudo apt-get -y update
+      - name: Install build dependencies
+        run: sudo apt -y install libgtk-3-dev
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          components: clippy, rustfmt
+          override: true
+      - name: Cargo fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+      - name: Cargo doc
+        uses: actions-rs/cargo@v1
+        with:
+          command: doc
+          args: --workspace --no-deps
+      - name: Cargo clippy
+        uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all --tests -- -D warnings
+
+  windows:
+    name: Windows
+    runs-on: windows-latest
+    needs: lints
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 50
+      - run: ci/set_rust_version.bash ${{ matrix.channel }} ${{ matrix.target }}
+        shell: bash
+      - run: ci/build.bash cargo ${{ matrix.target }}
+        shell: bash
+      - run: ci/test.bash cargo ${{ matrix.target }}
+        shell: bash
+
+    strategy:
+      fail-fast: true
+      matrix:
+        channel: [stable]
+        target:
+          # Windows
+          - i686-pc-windows-msvc
+          - x86_64-pc-windows-msvc
+
+  macos:
+    name: macOS
+    runs-on: macos-latest
+    needs: lints
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 50
+      - run: ci/set_rust_version.bash ${{ matrix.channel }} ${{ matrix.target }}
+      - run: ci/build.bash cargo ${{ matrix.target }}
+      - run: ci/test.bash cargo ${{ matrix.target }}
+
+    strategy:
+      fail-fast: true
+      matrix:
+        channel: [stable]
+        target:
+          # macOS
+          - x86_64-apple-darwin

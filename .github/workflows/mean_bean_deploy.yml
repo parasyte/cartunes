@@ -1,0 +1,85 @@
+name: Mean Bean Deploy
+env:
+  BIN: cartunes
+
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+      - "[0-9]+\\.[0-9]+\\.[0-9]+" # Push events to matching semver tags
+
+jobs:
+  windows:
+    name: Windows
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        target:
+          # Windows
+          - i686-pc-windows-msvc
+          - x86_64-pc-windows-msvc
+    steps:
+      - uses: actions/checkout@v2
+      - run: bash ci/set_rust_version.bash stable ${{ matrix.target }}
+      - run: bash ci/build.bash cargo ${{ matrix.target }} RELEASE
+      # TODO: Compress with UPX
+      - run: |
+          cd ./target/${{ matrix.target }}/release/
+          7z a "${{ env.BIN }}.zip" "${{ env.BIN }}.exe"
+          mv "${{ env.BIN }}.zip" $GITHUB_WORKSPACE
+        shell: bash
+        # We're using using a fork of `actions/create-release` that detects
+        # whether a release is already available or not first.
+      - uses: XAMPPRocky/create-release@v1.0.2
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          # Draft should **always** be false. GitHub doesn't provide a way to
+          # get draft releases from its API, so there's no point using it.
+          draft: false
+          prerelease: false
+      - uses: actions/upload-release-asset@v1
+        id: upload-release-asset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ env.BIN }}.zip
+          asset_name: ${{ env.BIN }}-${{ matrix.target }}.zip
+          asset_content_type: application/zip
+
+  macos:
+    name: macOS
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        target:
+          # macOS
+          - x86_64-apple-darwin
+    steps:
+      - uses: actions/checkout@v2
+      - run: ci/set_rust_version.bash stable ${{ matrix.target }}
+      - run: ci/build.bash cargo ${{ matrix.target }} RELEASE
+      # TODO: macOS app package and disk image
+      - run: tar -czvf ${{ env.BIN }}.tar.gz --directory=target/${{ matrix.target }}/release ${{ env.BIN }}
+      - uses: XAMPPRocky/create-release@v1.0.2
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          draft: false
+          prerelease: false
+      - uses: actions/upload-release-asset@v1
+        id: upload-release-asset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ env.BIN }}.tar.gz
+          asset_name: ${{ env.BIN }}-${{ matrix.target }}.tar.gz
+          asset_content_type: application/gzip
