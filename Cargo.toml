@@ -53,16 +53,16 @@ embed-resource = "1.6"
 # Fix fonts when changing `pixels_per_point`
 # See: https://github.com/emilk/egui/pull/564
 [patch.crates-io.egui]
-git = "https://github.com/parasyte/egui.git"
-rev = "fd5b9ce83c9c6b0c8336b0ccfd50c801a6aa325a"
+git = "https://github.com/emilk/egui.git"
+rev = "52d187ab5f036e1a0fa47892bce2eba2d4ada0f0"
 
 [patch.crates-io.epaint]
-git = "https://github.com/parasyte/egui.git"
-rev = "fd5b9ce83c9c6b0c8336b0ccfd50c801a6aa325a"
+git = "https://github.com/emilk/egui.git"
+rev = "52d187ab5f036e1a0fa47892bce2eba2d4ada0f0"
 
 [patch.crates-io.epi]
-git = "https://github.com/parasyte/egui.git"
-rev = "fd5b9ce83c9c6b0c8336b0ccfd50c801a6aa325a"
+git = "https://github.com/emilk/egui.git"
+rev = "52d187ab5f036e1a0fa47892bce2eba2d4ada0f0"
 
 [profile.release]
 codegen-units = 1

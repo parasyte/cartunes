@@ -133,9 +133,9 @@ checksum = "9c59e7af012c713f529e7a3ee57ce9b31ddd858d4b512923602f74608b009631"
 
 [[package]]
 name = "bytemuck"
-version = "1.7.0"
+version = "1.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9966d2ab714d0f785dbac0a0396251a35280aeb42413281617d0209ab4898435"
+checksum = "72957246c41db82b8ef88a5486143830adeb8227ef9837740bdec67724cf2c5b"
 
 [[package]]
 name = "byteorder"
@@ -680,7 +680,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.13.1"
-source = "git+https://github.com/parasyte/egui.git?rev=fd5b9ce83c9c6b0c8336b0ccfd50c801a6aa325a#fd5b9ce83c9c6b0c8336b0ccfd50c801a6aa325a"
+source = "git+https://github.com/emilk/egui.git?rev=52d187ab5f036e1a0fa47892bce2eba2d4ada0f0#52d187ab5f036e1a0fa47892bce2eba2d4ada0f0"
 dependencies = [
  "epaint",
 ]
@@ -711,7 +711,7 @@ dependencies = [
 [[package]]
 name = "emath"
 version = "0.13.0"
-source = "git+https://github.com/parasyte/egui.git?rev=fd5b9ce83c9c6b0c8336b0ccfd50c801a6aa325a#fd5b9ce83c9c6b0c8336b0ccfd50c801a6aa325a"
+source = "git+https://github.com/emilk/egui.git?rev=52d187ab5f036e1a0fa47892bce2eba2d4ada0f0#52d187ab5f036e1a0fa47892bce2eba2d4ada0f0"
 
 [[package]]
 name = "embed-resource"
@@ -739,7 +739,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.13.0"
-source = "git+https://github.com/parasyte/egui.git?rev=fd5b9ce83c9c6b0c8336b0ccfd50c801a6aa325a#fd5b9ce83c9c6b0c8336b0ccfd50c801a6aa325a"
+source = "git+https://github.com/emilk/egui.git?rev=52d187ab5f036e1a0fa47892bce2eba2d4ada0f0#52d187ab5f036e1a0fa47892bce2eba2d4ada0f0"
 dependencies = [
  "ab_glyph",
  "ahash 0.7.4",
@@ -751,7 +751,7 @@ dependencies = [
 [[package]]
 name = "epi"
 version = "0.13.0"
-source = "git+https://github.com/parasyte/egui.git?rev=fd5b9ce83c9c6b0c8336b0ccfd50c801a6aa325a#fd5b9ce83c9c6b0c8336b0ccfd50c801a6aa325a"
+source = "git+https://github.com/emilk/egui.git?rev=52d187ab5f036e1a0fa47892bce2eba2d4ada0f0#52d187ab5f036e1a0fa47892bce2eba2d4ada0f0"
 dependencies = [
  "egui",
 ]
@@ -1900,9 +1900,9 @@ checksum = "dbf0c48bc1d91375ae5c3cd81e3722dff1abcf81a30960240640d223f59fe0e5"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.27"
+version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0d8caf72986c1a598726adc988bb5984792ef84f5ee5aa50209145ee8077038"
+checksum = "5c7ed8b8c7b886ea3ed7dde405212185f423ab44682667c8c6dd14aa1d9f6612"
 dependencies = [
  "unicode-xid",
 ]
