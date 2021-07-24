@@ -20,8 +20,18 @@ jobs:
           - x86_64-pc-windows-msvc
     steps:
       - uses: actions/checkout@v2
-      - run: bash ci/set_rust_version.bash stable ${{ matrix.target }}
-      - run: bash ci/build.bash cargo ${{ matrix.target }} RELEASE
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          target: ${{ matrix.target }}
+          override: true
+      - name: Cargo build release
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
+
       # TODO: Compress with UPX
       - run: |
           cd ./target/${{ matrix.target }}/release/
@@ -64,8 +74,18 @@ jobs:
           - x86_64-apple-darwin
     steps:
       - uses: actions/checkout@v2
-      - run: ci/set_rust_version.bash stable ${{ matrix.target }}
-      - run: ci/build.bash cargo ${{ matrix.target }} RELEASE
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          target: ${{ matrix.target }}
+          override: true
+      - name: Cargo build release
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
+
       # TODO: macOS app package and disk image
       - run: tar -czvf ${{ env.BIN }}.tar.gz --directory=target/${{ matrix.target }}/release ${{ env.BIN }}
       - name: Get version
