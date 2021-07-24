@@ -48,7 +48,7 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ${{ env.BIN }}.zip
-          asset_name: ${{ env.BIN }}-${{ matrix.target }}.zip
+          asset_name: ${{ env.BIN }}-${{ github.ref }}-${{ matrix.target }}.zip
           asset_content_type: application/zip
 
   macos:
@@ -81,5 +81,5 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ${{ env.BIN }}.tar.gz
-          asset_name: ${{ env.BIN }}-${{ matrix.target }}.tar.gz
+          asset_name: ${{ env.BIN }}-${{ github.ref }}-${{ matrix.target }}.tar.gz
           asset_content_type: application/gzip

@@ -1,6 +1,6 @@
 [package]
 name = "cartunes"
-version = "0.1.0"
+version = "0.1.1"
 description = "Simple comparison app for iRacing car setups."
 authors = ["Jay Oster <jay@kodewerx.org>"]
 homepage = "https://github.com/parasyte/cartunes"
