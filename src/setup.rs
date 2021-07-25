@@ -190,8 +190,9 @@ fn setup_from_html<P: AsRef<Path>>(
     path: P,
     config: &Config,
 ) -> Result<(String, String, Setup), Error> {
-    let html = fs::read_to_string(&path).map_err(|err| Error::io(path, err))?;
-    let document = kuchiki::parse_html().one(html.as_str());
+    let bytes = fs::read(&path).map_err(|err| Error::io(path, err))?;
+    let html = encoding_rs::mem::decode_latin1(&bytes);
+    let document = kuchiki::parse_html().one(html.as_ref());
 
     // Find the document header and gather its text contents
     let text = document
@@ -354,6 +355,8 @@ mod tests {
         let mut warnings = VecDeque::new();
         let setups = Setups::new(&mut warnings, &config);
 
+        assert!(warnings.is_empty());
+
         let cars = setups
             .tracks()
             .get("Centripetal Circuit")
@@ -382,10 +385,15 @@ mod tests {
             .unwrap()
             .get("Dallara P217")
             .unwrap();
-        assert_eq!(cars.len(), 1);
-        let (file_name, dallara) = &cars[0];
-        assert_eq!(file_name, "2021S2_ARA_LMP2_LeMans_V1");
-        assert_eq!(dallara.keys().len(), 18);
+        assert_eq!(cars.len(), 2);
+        let valid_names = &[
+            "2021S2_ARA_LMP2_LeMans_V1",
+            "VRS_21S2_ESS_P217_LeMans_R-safe",
+        ];
+        for (file_name, dallara) in cars {
+            assert!(valid_names.contains(&file_name.as_str()));
+            assert_eq!(dallara.keys().len(), 18);
+        }
 
         let cars = setups
             .tracks()

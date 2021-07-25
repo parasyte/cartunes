@@ -179,6 +179,7 @@ dependencies = [
  "egui_wgpu_backend",
  "egui_winit_platform",
  "embed-resource",
+ "encoding_rs",
  "env_logger",
  "epaint",
  "font-loader",
@@ -722,6 +723,15 @@ dependencies = [
  "cc",
  "vswhom",
  "winreg",
+]
+
+[[package]]
+name = "encoding_rs"
+version = "0.8.28"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "80df024fbc5ac80f87dfef0d9f5209a252f2a497f7f42944cff24d8253cac065"
+dependencies = [
+ "cfg-if 1.0.0",
 ]
 
 [[package]]
