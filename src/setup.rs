@@ -385,15 +385,10 @@ mod tests {
             .unwrap()
             .get("Dallara P217")
             .unwrap();
-        assert_eq!(cars.len(), 2);
-        let valid_names = &[
-            "2021S2_ARA_LMP2_LeMans_V1",
-            "VRS_21S2_ESS_P217_LeMans_R-safe",
-        ];
-        for (file_name, dallara) in cars {
-            assert!(valid_names.contains(&file_name.as_str()));
-            assert_eq!(dallara.keys().len(), 18);
-        }
+        assert_eq!(cars.len(), 1);
+        let (file_name, dallara) = &cars[0];
+        assert_eq!(file_name, "iracing_lemans_default");
+        assert_eq!(dallara.keys().len(), 18);
 
         let cars = setups
             .tracks()
@@ -616,7 +611,7 @@ mod tests {
     fn test_setup_dallara_p217() {
         let config = Config::new("/tmp/some/path.toml", PhysicalSize::new(0, 0));
         let (track_name, car_name, setup) =
-            setup_from_html("./fixtures/2021S2_ARA_LMP2_LeMans_V1.htm", &config).unwrap();
+            setup_from_html("./fixtures/iracing_lemans_default.htm", &config).unwrap();
 
         assert_eq!(track_name, "Circuit des 24 Heures du Mans".to_string());
         assert_eq!(car_name, "Dallara P217".to_string());
@@ -684,36 +679,36 @@ mod tests {
             ("Rear wing angle", "12 deg"),
             ("# of dive planes", "1"),
             ("Wing gurney setting", "Off"),
-            ("Deck gurney setting", "Off"),
+            ("Deck gurney setting", "On"),
         ]);
         let aero_settings = setup.get("Aero Settings").unwrap();
         assert_eq!(aero_settings, &expected);
 
         // Aero Calculator
         let expected = create_ordered_multimap(&[
-            ("Front RH at speed", r#"1.417""#),
-            ("Rear RH at speed", r#"0.945""#),
-            ("Downforce balance", "41.67%"),
-            ("L/D", "4.991"),
+            ("Front RH at speed", r#"1.575""#),
+            ("Rear RH at speed", r#"1.181""#),
+            ("Downforce balance", "40.48%"),
+            ("L/D", "4.981"),
         ]);
         let aero_calculator = setup.get("Aero Calculator").unwrap();
         assert_eq!(aero_calculator, &expected);
 
         // Front
         let expected = create_ordered_multimap(&[
-            ("Third spring", "1143 lbs/in"),
-            ("Third perch offset", r#"0.886""#),
-            ("Third spring defl", "0.183 in"),
+            ("Third spring", "571 lbs/in"),
+            ("Third perch offset", r#"1.791""#),
+            ("Third spring defl", "0.292 in"),
             ("Third spring defl", "of"),
-            ("Third spring defl", "2.539 in"),
-            ("Third slider defl", "0.975 in"),
+            ("Third spring defl", "3.090 in"),
+            ("Third slider defl", "1.988 in"),
             ("Third slider defl", "of"),
             ("Third slider defl", "3.937 in"),
             ("ARB size", "Medium"),
-            ("ARB blades", "P4"),
-            ("Toe-in", r#"-2/32""#),
-            ("Third pin length", r#"7.480""#),
-            ("Front pushrod length", r#"7.323""#),
+            ("ARB blades", "P2"),
+            ("Toe-in", r#"-1/32""#),
+            ("Third pin length", r#"7.913""#),
+            ("Front pushrod length", r#"7.520""#),
             ("Power steering assist", "3"),
             ("Steering ratio", "11.0"),
             ("Display page", "Race1"),
@@ -723,20 +718,20 @@ mod tests {
 
         // Left Front
         let expected = create_ordered_multimap(&[
-            ("Corner weight", "528 lbs"),
-            ("Ride height", "1.771 in"),
-            ("Shock defl", "0.612 in"),
+            ("Corner weight", "527 lbs"),
+            ("Ride height", "1.772 in"),
+            ("Shock defl", "1.070 in"),
             ("Shock defl", "of"),
             ("Shock defl", "1.969 in"),
-            ("Torsion bar defl", "0.362 in"),
-            ("Torsion bar turns", "2.750 Turns"),
+            ("Torsion bar defl", "0.377 in"),
+            ("Torsion bar turns", "5.000 Turns"),
             ("Torsion bar O.D.", "13.90 mm"),
-            ("LS comp damping", "4 clicks"),
-            ("HS comp damping", "3 clicks"),
-            ("HS comp damp slope", "9 clicks"),
-            ("LS rbd damping", "5 clicks"),
-            ("HS rbd damping", "9 clicks"),
-            ("Camber", "-2.5 deg"),
+            ("LS comp damping", "2 clicks"),
+            ("HS comp damping", "5 clicks"),
+            ("HS comp damp slope", "4 clicks"),
+            ("LS rbd damping", "4 clicks"),
+            ("HS rbd damping", "6 clicks"),
+            ("Camber", "-2.8 deg"),
         ]);
         let left_front = setup.get("Left Front").unwrap();
         assert_eq!(left_front, &expected);
@@ -744,42 +739,42 @@ mod tests {
         // Left Rear
         let expected = create_ordered_multimap(&[
             ("Corner weight", "652 lbs"),
-            ("Ride height", "1.748 in"),
-            ("Shock defl", "1.478 in"),
+            ("Ride height", "1.771 in"),
+            ("Shock defl", "1.598 in"),
             ("Shock defl", "of"),
             ("Shock defl", "2.953 in"),
-            ("Spring defl", "0.604 in"),
+            ("Spring defl", "0.547 in"),
             ("Spring defl", "of"),
             ("Spring defl", "3.525 in"),
-            ("Spring perch offset", r#"1.969""#),
+            ("Spring perch offset", r#"2.146""#),
             ("Spring rate", "600 lbs/in"),
-            ("LS comp damping", "5 clicks"),
-            ("HS comp damping", "3 clicks"),
-            ("HS comp damp slope", "9 clicks"),
-            ("LS rbd damping", "8 clicks"),
-            ("HS rbd damping", "9 clicks"),
-            ("Camber", "-1.5 deg"),
-            ("Toe-in", r#"+0/32""#),
+            ("LS comp damping", "2 clicks"),
+            ("HS comp damping", "5 clicks"),
+            ("HS comp damp slope", "4 clicks"),
+            ("LS rbd damping", "4 clicks"),
+            ("HS rbd damping", "6 clicks"),
+            ("Camber", "-1.8 deg"),
+            ("Toe-in", r#"+1/32""#),
         ]);
         let left_rear = setup.get("Left Rear").unwrap();
         assert_eq!(left_rear, &expected);
 
         // Right Front
         let expected = create_ordered_multimap(&[
-            ("Corner weight", "528 lbs"),
-            ("Ride height", "1.771 in"),
-            ("Shock defl", "0.612 in"),
+            ("Corner weight", "527 lbs"),
+            ("Ride height", "1.772 in"),
+            ("Shock defl", "1.070 in"),
             ("Shock defl", "of"),
             ("Shock defl", "1.969 in"),
-            ("Torsion bar defl", "0.362 in"),
-            ("Torsion bar turns", "2.750 Turns"),
+            ("Torsion bar defl", "0.377 in"),
+            ("Torsion bar turns", "5.000 Turns"),
             ("Torsion bar O.D.", "13.90 mm"),
-            ("LS comp damping", "4 clicks"),
-            ("HS comp damping", "3 clicks"),
-            ("HS comp damp slope", "9 clicks"),
-            ("LS rbd damping", "5 clicks"),
-            ("HS rbd damping", "9 clicks"),
-            ("Camber", "-2.5 deg"),
+            ("LS comp damping", "2 clicks"),
+            ("HS comp damping", "5 clicks"),
+            ("HS comp damp slope", "4 clicks"),
+            ("LS rbd damping", "4 clicks"),
+            ("HS rbd damping", "6 clicks"),
+            ("Camber", "-2.8 deg"),
         ]);
         let right_front = setup.get("Right Front").unwrap();
         assert_eq!(right_front, &expected);
@@ -787,40 +782,40 @@ mod tests {
         // Right Rear
         let expected = create_ordered_multimap(&[
             ("Corner weight", "652 lbs"),
-            ("Ride height", "1.748 in"),
-            ("Shock defl", "1.478 in"),
+            ("Ride height", "1.771 in"),
+            ("Shock defl", "1.598 in"),
             ("Shock defl", "of"),
             ("Shock defl", "2.953 in"),
-            ("Spring defl", "0.604 in"),
+            ("Spring defl", "0.547 in"),
             ("Spring defl", "of"),
             ("Spring defl", "3.525 in"),
-            ("Spring perch offset", r#"1.969""#),
+            ("Spring perch offset", r#"2.146""#),
             ("Spring rate", "600 lbs/in"),
-            ("LS comp damping", "5 clicks"),
-            ("HS comp damping", "3 clicks"),
-            ("HS comp damp slope", "9 clicks"),
-            ("LS rbd damping", "8 clicks"),
-            ("HS rbd damping", "9 clicks"),
-            ("Camber", "-1.5 deg"),
-            ("Toe-in", r#"+0/32""#),
+            ("LS comp damping", "2 clicks"),
+            ("HS comp damping", "5 clicks"),
+            ("HS comp damp slope", "4 clicks"),
+            ("LS rbd damping", "4 clicks"),
+            ("HS rbd damping", "6 clicks"),
+            ("Camber", "-1.8 deg"),
+            ("Toe-in", r#"+1/32""#),
         ]);
         let right_rear = setup.get("Right Rear").unwrap();
         assert_eq!(right_rear, &expected);
 
         // Rear
         let expected = create_ordered_multimap(&[
-            ("Third spring", "800 lbs/in"),
-            ("Third perch offset", r#"1.358""#),
-            ("Third spring defl", "0.247 in"),
+            ("Third spring", "457 lbs/in"),
+            ("Third perch offset", r#"1.516""#),
+            ("Third spring defl", "0.538 in"),
             ("Third spring defl", "of"),
-            ("Third spring defl", "3.266 in"),
-            ("Third slider defl", "2.480 in"),
+            ("Third spring defl", "3.753 in"),
+            ("Third slider defl", "2.928 in"),
             ("Third slider defl", "of"),
             ("Third slider defl", "5.906 in"),
             ("ARB size", "Medium"),
-            ("ARB blades", "P5"),
-            ("Rear pushrod length", r#"6.516""#),
-            ("Third pin length", r#"6.890""#),
+            ("ARB blades", "P4"),
+            ("Rear pushrod length", r#"6.614""#),
+            ("Third pin length", r#"7.126""#),
             ("Cross weight", "50.0%"),
         ]);
         let rear = setup.get("Rear").unwrap();
@@ -832,8 +827,10 @@ mod tests {
         assert_eq!(lighting, &expected);
 
         // Brake Spec
-        let expected =
-            create_ordered_multimap(&[("Pad compound", "High"), ("Brake pressure bias", "48.8%")]);
+        let expected = create_ordered_multimap(&[
+            ("Pad compound", "Medium"),
+            ("Brake pressure bias", "49.2%"),
+        ]);
         let brake_spec = setup.get("Brake Spec").unwrap();
         assert_eq!(brake_spec, &expected);
 
@@ -844,8 +841,8 @@ mod tests {
 
         // Traction Control
         let expected = create_ordered_multimap(&[
-            ("Traction control gain", "3 (TC)"),
-            ("Traction control slip", "2 (TC)"),
+            ("Traction control gain", "5 (TC)"),
+            ("Traction control slip", "5 (TC)"),
             ("Throttle shape", "1"),
         ]);
         let fuel = setup.get("Traction Control").unwrap();
@@ -867,8 +864,8 @@ mod tests {
         // Rear Diff Spec
         let expected = create_ordered_multimap(&[
             ("Drive/coast ramp angles", "45/55"),
-            ("Clutch friction faces", "10"),
-            ("Preload", "81 ft-lbs"),
+            ("Clutch friction faces", "4"),
+            ("Preload", "55 ft-lbs"),
         ]);
         let rear_diff_spec = setup.get("Rear Diff Spec").unwrap();
         assert_eq!(rear_diff_spec, &expected);
