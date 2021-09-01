@@ -44,6 +44,7 @@ jobs:
       - name: Get version
         id: get_version
         run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+        shell: bash
       - uses: XAMPPRocky/create-release@v1.0.2
         id: create_release
         env:
