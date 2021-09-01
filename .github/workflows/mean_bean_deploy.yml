@@ -35,7 +35,7 @@ jobs:
 
       # TODO: Compress with UPX
       - run: |
-          cd ./target/${{ matrix.target }}/release/
+          cd ./target/release/
           7z a "${{ env.BIN }}.zip" "${{ env.BIN }}.exe"
           mv "${{ env.BIN }}.zip" $GITHUB_WORKSPACE
         shell: bash
@@ -89,7 +89,7 @@ jobs:
           args: --release
 
       # TODO: macOS app package and disk image
-      - run: tar -czvf ${{ env.BIN }}.tar.gz --directory=target/${{ matrix.target }}/release ${{ env.BIN }}
+      - run: tar -czvf ${{ env.BIN }}.tar.gz --directory=target/release ${{ env.BIN }}
       - name: Get version
         id: get_version
         run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
