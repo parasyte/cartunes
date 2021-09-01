@@ -24,6 +24,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
+          toolchain: stable
           target: ${{ matrix.target }}
           override: true
       - name: Cargo build release
@@ -78,6 +79,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
+          toolchain: stable
           target: ${{ matrix.target }}
           override: true
       - name: Cargo build release
