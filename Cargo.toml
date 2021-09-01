@@ -1,6 +1,6 @@
 [package]
 name = "cartunes"
-version = "0.1.1"
+version = "0.1.2"
 description = "Simple comparison app for iRacing car setups."
 authors = ["Jay Oster <jay@kodewerx.org>"]
 homepage = "https://github.com/parasyte/cartunes"
@@ -17,10 +17,12 @@ optimize = ["log/release_max_level_warn"]
 [dependencies]
 copypasta = "0.7"
 directories = "3.0"
-egui = { version = "0.13", default-features = false, features = ["single_threaded"] }
-egui_wgpu_backend = "0.10"
+egui = { version = "0.14", default-features = false, features = ["single_threaded"] }
+egui_wgpu_backend = "0.12"
+egui_winit_platform = { version = "0.10", default-features = false, features = ["clipboard", "webbrowser"] }
 encoding_rs = "0.8"
-epaint = { version = "0.13", default-features = false, features = ["single_threaded"] }
+env_logger = { version = "0.9", default-features = false, features = ["atty", "humantime", "termcolor"] }
+epaint = { version = "0.14", default-features = false, features = ["single_threaded"] }
 font-loader = "0.11"
 kuchiki = "0.8"
 log = "0.4"
@@ -34,36 +36,12 @@ toml_edit = "0.2"
 unicode-segmentation = "1.7"
 walkdir = "2.3"
 webbrowser = "0.5"
-wgpu = "0.9"
+wgpu = "0.10"
 winit = "0.25"
 winit_input_helper = "0.10"
 
-[dependencies.egui_winit_platform]
-version = "0.9"
-default-features = false
-features = ["clipboard", "webbrowser"]
-
-[dependencies.env_logger]
-version = "0.9"
-default-features = false
-features = ["atty", "humantime", "termcolor"]
-
 [target.'cfg(windows)'.build-dependencies]
 embed-resource = "1.6"
-
-# Fix fonts when changing `pixels_per_point`
-# See: https://github.com/emilk/egui/pull/564
-[patch.crates-io.egui]
-git = "https://github.com/emilk/egui.git"
-rev = "52d187ab5f036e1a0fa47892bce2eba2d4ada0f0"
-
-[patch.crates-io.epaint]
-git = "https://github.com/emilk/egui.git"
-rev = "52d187ab5f036e1a0fa47892bce2eba2d4ada0f0"
-
-[patch.crates-io.epi]
-git = "https://github.com/emilk/egui.git"
-rev = "52d187ab5f036e1a0fa47892bce2eba2d4ada0f0"
 
 [profile.release]
 codegen-units = 1

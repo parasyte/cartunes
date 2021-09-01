@@ -5,7 +5,7 @@ use crate::gpu::Gpu;
 use crate::gui::{ErrorButton, Gui, ShowError};
 use directories::ProjectDirs;
 use egui::ClippedMesh;
-use egui_wgpu_backend::{RenderPass, ScreenDescriptor};
+use egui_wgpu_backend::{BackendError, RenderPass, ScreenDescriptor};
 use egui_winit_platform::{Platform, PlatformDescriptor};
 use font_loader::system_fonts::{self, FontPropertyBuilder};
 use std::borrow::Cow;
@@ -132,7 +132,7 @@ impl Framework {
 
         // End the egui frame and create all paint jobs to prepare for rendering.
         // TODO: Handle output.needs_repaint to avoid game-mode continuous redraws.
-        let (_output, paint_commands) = self.platform.end_frame();
+        let (_output, paint_commands) = self.platform.end_frame(Some(window));
         self.paint_jobs = self.platform.context().tessellate(paint_commands);
     }
 
@@ -142,7 +142,7 @@ impl Framework {
         encoder: &mut wgpu::CommandEncoder,
         render_target: &wgpu::TextureView,
         gpu: &Gpu,
-    ) {
+    ) -> Result<(), BackendError> {
         // Upload all resources to the GPU.
         self.rpass
             .update_texture(&gpu.device, &gpu.queue, &self.platform.context().texture());
@@ -161,7 +161,7 @@ impl Framework {
             &self.paint_jobs,
             &self.screen_descriptor,
             Some(wgpu::Color::BLACK),
-        );
+        )
     }
 
     /// Call this when the system theme changes.

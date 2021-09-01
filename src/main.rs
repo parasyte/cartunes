@@ -10,7 +10,7 @@
 //! the Metal graphics API on macOS. Dark mode and light mode OS themes are both included, although
 //! automatic theme switching
 //! [may not work on all platforms](https://github.com/rust-windowing/winit/issues/1549).
-#![cfg_attr(not(test), windows_subsystem = "windows")]
+#![cfg_attr(not(any(test, debug_assertions)), windows_subsystem = "windows")]
 #![deny(clippy::all)]
 
 use crate::framework::{ConfigHandler, Framework, UserEvent};
@@ -105,6 +105,7 @@ fn create_window() -> Result<(EventLoop<UserEvent>, winit::window::Window, Gpu, 
 
 // TODO: Better error handling
 fn main() -> Result<(), Error> {
+    #[cfg(any(debug_assertions, not(windows)))]
     env_logger::init();
 
     let (event_loop, window, mut gpu, mut framework) = create_window()?;
@@ -179,8 +180,18 @@ fn main() -> Result<(), Error> {
                     }
                 };
 
+                let view = frame
+                    .output
+                    .texture
+                    .create_view(&wgpu::TextureViewDescriptor::default());
+
                 // Render egui
-                framework.render(&mut encoder, &frame.output.view, &gpu);
+                let render_result = framework.render(&mut encoder, &view, &gpu);
+                if let Err(err) = render_result {
+                    error!("framework.render() failed: {}", err);
+                    *control_flow = ControlFlow::Exit;
+                    return;
+                }
 
                 // Complete frame
                 gpu.queue.submit(Some(encoder.finish()));
