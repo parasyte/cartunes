@@ -489,18 +489,18 @@ mod tests {
         let track_ids = &config.track_ids;
         assert_eq!(
             track_ids.get_longest_common_prefix("charlotte_2018_2019_roval"),
-            Some("charlotte_2018".as_bytes()),
+            Some("charlotte_2018_2019_roval".as_bytes()),
         );
         assert_eq!(
-            track_ids.get_longest_common_prefix("charlotte_fullroadcoarse"),
+            track_ids.get_longest_common_prefix("charlotte_fullroadcourse"),
             Some("charlotte".as_bytes()),
         );
         assert_eq!(track_ids.get_longest_common_prefix("san_francisco"), None,);
 
         // Expectations for track name mapping.
         assert_eq!(
-            config.tracks.get("charlotte_2018"),
-            Some(&"Charlotte Motor Speedway".to_string())
+            config.tracks.get("charlotte_2018_2019_roval"),
+            Some(&"Charlotte Motor Speedway - Road Course".to_string())
         );
         assert_eq!(
             config.tracks.get("charlotte"),

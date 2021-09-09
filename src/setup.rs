@@ -370,7 +370,7 @@ mod tests {
 
         let cars = setups
             .tracks()
-            .get("Charlotte Motor Speedway")
+            .get("Charlotte Motor Speedway - Legends Oval")
             .unwrap()
             .get("Global Mazda MX-5 Cup")
             .unwrap();
@@ -381,7 +381,7 @@ mod tests {
 
         let cars = setups
             .tracks()
-            .get("Circuit des 24 Heures du Mans")
+            .get("Circuit des 24 Heures du Mans - 24 Heures du Mans")
             .unwrap()
             .get("Dallara P217")
             .unwrap();
@@ -504,7 +504,10 @@ mod tests {
         let (track_name, car_name, setup) =
             setup_from_html("./fixtures/mx5_charlotte_legends_oval.htm", &config).unwrap();
 
-        assert_eq!(track_name, "Charlotte Motor Speedway".to_string());
+        assert_eq!(
+            track_name,
+            "Charlotte Motor Speedway - Legends Oval".to_string()
+        );
         assert_eq!(car_name, "Global Mazda MX-5 Cup".to_string());
         assert_eq!(setup.keys().len(), 6);
 
@@ -613,7 +616,10 @@ mod tests {
         let (track_name, car_name, setup) =
             setup_from_html("./fixtures/iracing_lemans_default.htm", &config).unwrap();
 
-        assert_eq!(track_name, "Circuit des 24 Heures du Mans".to_string());
+        assert_eq!(
+            track_name,
+            "Circuit des 24 Heures du Mans - 24 Heures du Mans".to_string()
+        );
         assert_eq!(car_name, "Dallara P217".to_string());
         assert_eq!(setup.keys().len(), 18);
 
