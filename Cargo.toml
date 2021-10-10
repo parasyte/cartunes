@@ -16,9 +16,9 @@ optimize = ["log/release_max_level_warn"]
 
 [dependencies]
 copypasta = "0.7"
-directories = "3.0"
+directories = "4.0"
 egui = { version = "0.14", default-features = false, features = ["single_threaded"] }
-egui_wgpu_backend = "0.12"
+egui_wgpu_backend = "0.13"
 egui_winit_platform = { version = "0.10", default-features = false, features = ["clipboard", "webbrowser"] }
 encoding_rs = "0.8"
 env_logger = { version = "0.9", default-features = false, features = ["atty", "humantime", "termcolor"] }
@@ -30,13 +30,13 @@ ordered-multimap = "0.4"
 patricia_tree = "0.3"
 pollster = "0.2"
 raw-window-handle = "0.3"
-rfd = "0.4"
+rfd = "0.5"
 thiserror = "1.0"
-toml_edit = "0.2"
+toml_edit = "0.5"
 unicode-segmentation = "1.7"
 walkdir = "2.3"
 webbrowser = "0.5"
-wgpu = "0.10"
+wgpu = "0.11"
 winit = "0.25"
 winit_input_helper = "0.10"
 

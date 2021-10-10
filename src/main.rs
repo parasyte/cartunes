@@ -181,7 +181,6 @@ fn main() -> Result<(), Error> {
                 };
 
                 let view = frame
-                    .output
                     .texture
                     .create_view(&wgpu::TextureViewDescriptor::default());
 
@@ -195,6 +194,7 @@ fn main() -> Result<(), Error> {
 
                 // Complete frame
                 gpu.queue.submit(Some(encoder.finish()));
+                frame.present();
             }
             _ => (),
         }

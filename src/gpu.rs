@@ -32,6 +32,7 @@ impl Gpu {
         let surface = unsafe { instance.create_surface(window) };
         let adapter = instance.request_adapter(&wgpu::RequestAdapterOptions {
             compatible_surface: Some(&surface),
+            force_fallback_adapter: false,
             power_preference: wgpu::PowerPreference::HighPerformance,
         });
         let adapter = pollster::block_on(adapter).ok_or(Error::AdapterNotFound)?;
@@ -68,15 +69,17 @@ impl Gpu {
         self.reconfigure_surface();
     }
 
-    pub(crate) fn prepare(&mut self) -> Result<(wgpu::CommandEncoder, wgpu::SurfaceFrame), Error> {
+    pub(crate) fn prepare(
+        &mut self,
+    ) -> Result<(wgpu::CommandEncoder, wgpu::SurfaceTexture), Error> {
         let frame = self
             .surface
-            .get_current_frame()
+            .get_current_texture()
             .or_else(|err| match err {
                 wgpu::SurfaceError::Outdated => {
                     // Recreate the swap chain to mitigate race condition on drawing surface resize.
                     self.reconfigure_surface();
-                    self.surface.get_current_frame()
+                    self.surface.get_current_texture()
                 }
                 err => Err(err),
             })
