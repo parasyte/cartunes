@@ -268,7 +268,7 @@ impl Config {
 
         for color in &self.colors {
             let color = format!("#{:02x}{:02x}{:02x}", color.r(), color.g(), color.b());
-            colors.push(color).unwrap();
+            colors.push(color);
         }
 
         self.doc["config"]["colors"] = toml_edit::value(colors);
