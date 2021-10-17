@@ -8,9 +8,12 @@ use crate::str_ext::Ellipsis;
 use copypasta::{ClipboardContext, ClipboardProvider};
 use egui::widgets::color_picker::{color_edit_button_srgba, Alpha};
 use egui::{CtxRef, Widget};
+use hotwatch::Hotwatch;
+use log::debug;
 use std::collections::{HashMap, VecDeque};
 use std::path::Path;
 use std::time::{Duration, Instant};
+use thiserror::Error;
 use winit::event_loop::EventLoopProxy;
 
 mod grid;
@@ -22,6 +25,9 @@ pub(crate) struct Gui {
 
     /// A tree of `Setups` containing all known setup exports.
     setups: Setups,
+
+    /// Filesystem watcher for changes to any setup exports.
+    hotwatch: Hotwatch,
 
     /// Selected track name.
     selected_track_name: Option<String>,
@@ -85,6 +91,12 @@ pub(crate) struct ShowWarning {
     context: String,
 }
 
+#[derive(Debug, Error)]
+pub(crate) enum Error {
+    #[error("File system watch error: {0}")]
+    Notify(#[from] hotwatch::Error),
+}
+
 impl Gui {
     /// Create a GUI.
     pub(crate) fn new(
@@ -93,10 +105,16 @@ impl Gui {
         event_loop_proxy: EventLoopProxy<UserEvent>,
         show_errors: VecDeque<ShowError>,
         show_warnings: VecDeque<ShowWarning>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, Error> {
+        let mut hotwatch = Hotwatch::new()?;
+        let watcher = Self::watch_setups_path(event_loop_proxy.clone());
+
+        hotwatch.watch(config.get_setups_path(), watcher)?;
+
+        Ok(Self {
             config,
             setups,
+            hotwatch,
             selected_track_name: None,
             selected_car_name: None,
             selected_setups: Vec::new(),
@@ -107,7 +125,7 @@ impl Gui {
             show_errors,
             show_warnings,
             show_tooltips: HashMap::new(),
-        }
+        })
     }
 
     /// Draw the UI using egui.
@@ -208,11 +226,46 @@ impl Gui {
         }
     }
 
+    fn watch_setups_path(event_loop_proxy: EventLoopProxy<UserEvent>) -> impl Fn(hotwatch::Event) {
+        debug!("Creating watcher...");
+
+        move |event| {
+            debug!("Hotwatch event: {:?}", event);
+            debug!("event_loop_proxy: {:?}", event_loop_proxy);
+            // TODO: Handle create, remove, rename, and write
+            // Only unset track and car comboboxes when one of these has been removed
+            // Update setup selection checkboxes (indices) when one is removed (move all indices down)
+            // Use `event_loop_proxy` to notify self of these changes with a new `UserEvent` variant
+            // Add a warning variant to `UserEvent` for error handling
+        }
+    }
+
     /// Update setups export path.
     pub(crate) fn update_setups_path<P: AsRef<Path>>(&mut self, setups_path: P) {
+        if let Err(error) = self.hotwatch.unwatch(self.config.get_setups_path()) {
+            self.show_warnings.push_front(ShowWarning::new(
+                error,
+                format!(
+                    "Unable to stop watching setup exports path for changes: `{:?}`",
+                    self.config.get_setups_path()
+                ),
+            ));
+        }
+
         self.config.update_setups_path(setups_path);
         self.setups = Setups::new(&mut self.show_warnings, &self.config);
         self.clear_filters();
+
+        let watcher = Self::watch_setups_path(self.event_loop_proxy.clone());
+        if let Err(error) = self.hotwatch.watch(self.config.get_setups_path(), watcher) {
+            self.show_warnings.push_front(ShowWarning::new(
+                error,
+                format!(
+                    "Unable to watch setup exports path for changes: `{:?}`",
+                    self.config.get_setups_path()
+                ),
+            ));
+        }
     }
 
     /// Clear track, car, and setup filters.

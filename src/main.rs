@@ -15,7 +15,7 @@
 
 use crate::framework::{ConfigHandler, Framework, UserEvent};
 use crate::gpu::{Error as GpuError, Gpu};
-use crate::gui::Gui;
+use crate::gui::{Error as GuiError, Gui};
 use crate::setup::Setups;
 use log::error;
 use std::collections::VecDeque;
@@ -42,6 +42,9 @@ mod str_ext;
 enum Error {
     #[error("Window creation error: {0}")]
     Winit(#[from] winit::error::OsError),
+
+    #[error("GUI Error: {0}")]
+    Gui(#[from] GuiError),
 
     #[error("GPU Error: {0}")]
     Gpu(#[from] GpuError),
@@ -93,7 +96,7 @@ fn create_window() -> Result<(EventLoop<UserEvent>, winit::window::Window, Gpu, 
         let config = Framework::unwrap_config(&mut errors, event_loop.create_proxy(), config);
         let setups = Setups::new(&mut warnings, &config);
         let theme = config.theme().as_winit_theme(&window);
-        let gui = Gui::new(config, setups, event_loop.create_proxy(), errors, warnings);
+        let gui = Gui::new(config, setups, event_loop.create_proxy(), errors, warnings)?;
         let gpu = Gpu::new(&window, window_size)?;
         let framework = Framework::new(window_size, scale_factor, theme, gui, &gpu);
 
