@@ -91,7 +91,7 @@ impl<'setup> SetupGrid<'setup> {
                 });
 
                 let mut colors = colors.iter().cloned().cycle();
-                let mut first_value = None;
+                let mut first_value: Option<String> = None;
 
                 for setup in setups {
                     let values = setup.get(prop_group).unwrap().get_all(prop_name);
@@ -118,7 +118,15 @@ impl<'setup> SetupGrid<'setup> {
                     let color = colors.next().unwrap_or_else(|| ui.visuals().text_color());
                     let (color, background) = if let Some(first_value) = first_value.as_ref() {
                         use std::cmp::Ordering;
-                        match value.cmp(first_value) {
+
+                        let comparison = if value.starts_with('-') {
+                            // Reverse parameter order when comparing negative numbers
+                            human_sort::compare(first_value, &value)
+                        } else {
+                            human_sort::compare(&value, first_value)
+                        };
+
+                        match comparison {
                             Ordering::Less => (ui.visuals().text_color(), Some(diff_colors.0)),
                             Ordering::Greater => (ui.visuals().text_color(), Some(diff_colors.1)),
                             Ordering::Equal => (color, None),
