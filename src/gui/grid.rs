@@ -24,13 +24,10 @@ struct Group<'setup> {
 
 /// A label that can be displayed in a column.
 struct Label {
-    /// Make the label pretty.
-    color: egui::Color32,
-
     /// Diffs get a background color.
     background: Option<egui::Color32>,
 
-    /// Container for the label text and style.
+    /// Container for the label text, style, and color.
     galley: Arc<Galley>,
 }
 
@@ -77,15 +74,16 @@ impl<'setup> SetupGrid<'setup> {
                 let mut columns = Vec::with_capacity(column_count);
 
                 // Calculate width of `prop_name`
-                let galley = ui
-                    .fonts()
-                    .layout_no_wrap(egui::TextStyle::Body, prop_name.to_string());
-                let width = galley.size.x + ui.spacing().item_spacing.x * 5.0;
+                let galley = ui.fonts().layout_no_wrap(
+                    prop_name.to_string(),
+                    egui::TextStyle::Body,
+                    ui.visuals().text_color(),
+                );
+                let width = galley.rect.width() + ui.spacing().item_spacing.x * 5.0;
                 output.columns[i] = output.columns[i].max(width);
                 i += 1;
 
                 columns.push(Label {
-                    color: ui.visuals().text_color(),
                     background: None,
                     galley,
                 });
@@ -136,16 +134,14 @@ impl<'setup> SetupGrid<'setup> {
                         (color, None)
                     };
 
-                    let galley = ui.fonts().layout_no_wrap(egui::TextStyle::Body, value);
-                    let width = galley.size.x + ui.spacing().item_spacing.x * 2.0;
+                    let galley = ui
+                        .fonts()
+                        .layout_no_wrap(value, egui::TextStyle::Body, color);
+                    let width = galley.rect.width() + ui.spacing().item_spacing.x * 2.0;
                     output.columns[i] = output.columns[i].max(width);
                     i += 1;
 
-                    columns.push(Label {
-                        color,
-                        background,
-                        galley,
-                    });
+                    columns.push(Label { background, galley });
                 }
 
                 group.matrix.push(columns);
@@ -172,7 +168,8 @@ impl<'setup> SetupGrid<'setup> {
                         ui.horizontal(|ui| {
                             // Draw each column
                             for (i, label) in row.into_iter().enumerate() {
-                                let size = egui::Vec2::new(column_widths[i], label.galley.size.y);
+                                let size =
+                                    egui::Vec2::new(column_widths[i], label.galley.rect.height());
                                 let (rect, _) = ui.allocate_exact_size(size, egui::Sense::hover());
 
                                 // Draw optional background color
@@ -180,14 +177,16 @@ impl<'setup> SetupGrid<'setup> {
                                     let fill = egui::Rgba::from(ui.visuals().code_bg_color);
                                     let background = egui::Rgba::from(background);
                                     let color = egui::Color32::from(background * fill);
-                                    let rect =
-                                        egui::Rect::from_min_size(rect.min, label.galley.size);
+                                    let rect = egui::Rect::from_min_size(
+                                        rect.min,
+                                        label.galley.rect.size(),
+                                    );
 
                                     ui.painter().rect_filled(rect.expand(3.0), 4.0, color);
                                 }
 
                                 // Draw text
-                                ui.painter().galley(rect.min, label.galley, label.color);
+                                ui.painter().galley(rect.min, label.galley);
                             }
                         });
                     }

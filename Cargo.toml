@@ -5,10 +5,9 @@ description = "Simple comparison app for iRacing car setups."
 authors = ["Jay Oster <jay@kodewerx.org>"]
 homepage = "https://github.com/parasyte/cartunes"
 repository = "https://github.com/parasyte/cartunes"
-edition = "2018"
+edition = "2021"
 readme = "README.md"
 license = "MIT"
-resolver = "2"
 
 [features]
 default = ["optimize"]
@@ -17,12 +16,12 @@ optimize = ["log/release_max_level_warn"]
 [dependencies]
 copypasta = "0.7"
 directories = "4.0"
-egui = { version = "0.14", default-features = false, features = ["single_threaded"] }
-egui_wgpu_backend = "0.13"
-egui_winit_platform = { version = "0.10", default-features = false, features = ["clipboard", "webbrowser"] }
+egui = { version = "0.15", default-features = false, features = ["single_threaded"] }
+egui_wgpu_backend = { git = "https://github.com/hasenbanck/egui_wgpu_backend.git", rev = "961125e7bd2c71c5ead1d61a7ca7ffa8c0d17f48" }
+egui-winit = "0.15"
 encoding_rs = "0.8"
 env_logger = { version = "0.9", default-features = false, features = ["atty", "humantime", "termcolor"] }
-epaint = { version = "0.14", default-features = false, features = ["single_threaded"] }
+epaint = { version = "0.15", default-features = false, features = ["single_threaded"] }
 font-loader = "0.11"
 human-sort = "0.2"
 kuchiki = "0.8"
@@ -33,7 +32,7 @@ pollster = "0.2"
 raw-window-handle = "0.3"
 rfd = "0.5"
 thiserror = "1.0"
-toml_edit = "0.5"
+toml_edit = "0.6"
 unicode-segmentation = "1.7"
 walkdir = "2.3"
 webbrowser = "0.5"
