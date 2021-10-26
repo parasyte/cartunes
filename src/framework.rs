@@ -116,11 +116,12 @@ impl Framework {
 
     /// Prepare egui.
     pub(crate) fn prepare(&mut self, window: &Window) {
+        // Begin the egui frame.
         let raw_input = self.egui_state.take_egui_input(window);
         self.egui_ctx.begin_frame(raw_input);
 
         // Draw the application GUI.
-        self.update_theme(&self.egui_ctx.clone());
+        update_theme(&mut self.theme, &self.egui_ctx);
         self.gui.ui(&self.egui_ctx, window);
 
         // End the egui frame and create all paint jobs to prepare for rendering.
@@ -268,13 +269,13 @@ impl Framework {
     pub(crate) fn add_error(&mut self, err: ShowError) {
         self.gui.add_error(err);
     }
+}
 
-    /// Configure the theme based on system settings.
-    fn update_theme(&mut self, ctx: &egui::CtxRef) {
-        if let Some(theme) = self.theme.take() {
-            // Set the style
-            ctx.set_style(create_style(theme));
-        }
+/// Configure the theme based on system settings.
+fn update_theme(theme: &mut Option<Theme>, ctx: &egui::CtxRef) {
+    if let Some(theme) = theme.take() {
+        // Set the style
+        ctx.set_style(create_style(theme));
     }
 }
 
