@@ -179,9 +179,11 @@ impl Gui {
             ui.set_enabled(enabled);
 
             // Draw car filters
-            ui.horizontal(|ui| {
-                self.track_selection(ui);
-                self.car_selection(ui);
+            egui::containers::ScrollArea::horizontal().show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    self.track_selection(ui);
+                    self.car_selection(ui);
+                });
             });
 
             // Draw setup filters
@@ -190,7 +192,7 @@ impl Gui {
             let (track_name, car_name, setups) = self.setup_selection(ui, &colors);
             if !setups.is_empty() {
                 // Draw setup properties grid
-                egui::containers::ScrollArea::auto_sized()
+                egui::containers::ScrollArea::both()
                     .id_source(format!("{}{}", track_name, car_name))
                     .show(ui, |ui| {
                         SetupGrid::new(ui, &setups, &colors, diff_colors).show(ui, car_name);
@@ -514,15 +516,18 @@ impl Gui {
                 .show(ctx, |ui| {
                     ui.label(&err.context);
 
-                    egui::ScrollArea::from_max_height(height).show(ui, |ui| {
-                        egui::TextEdit::multiline(&mut err.error.to_string())
-                            .enabled(false)
-                            .text_style(egui::TextStyle::Monospace)
-                            .text_color(red)
-                            .desired_width(width)
-                            .desired_rows(10)
-                            .ui(ui);
-                    });
+                    egui::ScrollArea::vertical()
+                        .max_height(height)
+                        .show(ui, |ui| {
+                            let mut text = err.error.to_string();
+                            let text_edit = egui::TextEdit::multiline(&mut text)
+                                .text_style(egui::TextStyle::Monospace)
+                                .text_color(red)
+                                .desired_width(width)
+                                .desired_rows(10);
+
+                            ui.add_enabled(false, text_edit);
+                        });
 
                     ui.separator();
                     ui.horizontal(|ui| {
@@ -591,15 +596,18 @@ impl Gui {
                     ui.set_enabled(enabled);
                     ui.label(&warning.context);
 
-                    egui::ScrollArea::from_max_height(height).show(ui, |ui| {
-                        egui::TextEdit::multiline(&mut warning.warning.to_string())
-                            .enabled(false)
-                            .text_style(egui::TextStyle::Monospace)
-                            .text_color(yellow)
-                            .desired_width(width)
-                            .desired_rows(10)
-                            .ui(ui);
-                    });
+                    egui::ScrollArea::vertical()
+                        .max_height(height)
+                        .show(ui, |ui| {
+                            let mut text = warning.warning.to_string();
+                            let text_edit = egui::TextEdit::multiline(&mut text)
+                                .text_style(egui::TextStyle::Monospace)
+                                .text_color(yellow)
+                                .desired_width(width)
+                                .desired_rows(10);
+
+                            ui.add_enabled(false, text_edit);
+                        });
 
                     ui.separator();
                     ui.horizontal(|ui| {
@@ -730,10 +738,17 @@ fn get_combo_box_width<'a>(ui: &egui::Ui, choices: impl Iterator<Item = &'a Stri
     let spacing = ui.spacing();
     let default = spacing.interact_size.x + spacing.item_spacing.x + spacing.icon_width;
     choices.fold(default, |width, choice| {
-        let galley = ui
-            .fonts()
-            .layout_no_wrap(egui::TextStyle::Button, choice.to_string());
+        let galley = ui.fonts().layout_no_wrap(
+            choice.to_string(),
+            egui::TextStyle::Button,
+            egui::Color32::TEMPORARY_COLOR,
+        );
 
-        width.max(galley.size.x + spacing.item_spacing.x + spacing.icon_width)
+        width.max(
+            galley.rect.width()
+                + spacing.item_spacing.x
+                + spacing.icon_width
+                + spacing.scroll_bar_width,
+        )
     })
 }

@@ -4,14 +4,12 @@ use crate::config::{Config, Error as ConfigError, UserTheme};
 use crate::gpu::Gpu;
 use crate::gui::{ErrorButton, Gui, ShowError};
 use directories::ProjectDirs;
-use egui::ClippedMesh;
+use egui::{ClippedMesh, CtxRef};
 use egui_wgpu_backend::{BackendError, RenderPass, ScreenDescriptor};
-use egui_winit_platform::{Platform, PlatformDescriptor};
 use font_loader::system_fonts::{self, FontPropertyBuilder};
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::path::PathBuf;
-use std::time::Instant;
 use thiserror::Error;
 use winit::dpi::PhysicalSize;
 use winit::event_loop::EventLoopProxy;
@@ -20,8 +18,8 @@ use winit::window::{Theme, Window};
 /// Manages all state required for rendering egui.
 pub(crate) struct Framework {
     // State for egui.
-    start_time: Instant,
-    platform: Platform,
+    egui_ctx: CtxRef,
+    egui_state: egui_winit::State,
     screen_descriptor: ScreenDescriptor,
     rpass: RenderPass,
     paint_jobs: Vec<ClippedMesh>,
@@ -67,7 +65,7 @@ impl Framework {
     /// Create a framework for egui.
     pub(crate) fn new(
         size: PhysicalSize<u32>,
-        scale_factor: f64,
+        scale_factor: f32,
         theme: Theme,
         gui: Gui,
         gpu: &Gpu,
@@ -76,23 +74,22 @@ impl Framework {
         let height = size.height;
         let font_definitions = create_fonts();
         let style = create_style(theme);
-        let platform = Platform::new(PlatformDescriptor {
-            physical_width: width,
-            physical_height: height,
-            scale_factor,
-            font_definitions,
-            style,
-        });
+
+        let egui_state = egui_winit::State::from_pixels_per_point(scale_factor);
+        let egui_ctx = CtxRef::default();
         let screen_descriptor = ScreenDescriptor {
             physical_width: width,
             physical_height: height,
-            scale_factor: scale_factor as f32,
+            scale_factor,
         };
         let rpass = RenderPass::new(&gpu.device, wgpu::TextureFormat::Bgra8UnormSrgb, 1);
 
+        egui_ctx.set_fonts(font_definitions);
+        egui_ctx.set_style(style);
+
         Self {
-            start_time: Instant::now(),
-            platform,
+            egui_ctx,
+            egui_state,
             screen_descriptor,
             rpass,
             paint_jobs: Vec::new(),
@@ -102,8 +99,8 @@ impl Framework {
     }
 
     /// Handle input events from the window manager.
-    pub(crate) fn handle_event<T>(&mut self, event: &winit::event::Event<'_, T>) {
-        self.platform.handle_event(event);
+    pub(crate) fn handle_event(&mut self, event: &winit::event::WindowEvent) {
+        self.egui_state.on_event(&self.egui_ctx, event);
     }
 
     /// Resize egui.
@@ -119,21 +116,20 @@ impl Framework {
 
     /// Prepare egui.
     pub(crate) fn prepare(&mut self, window: &Window) {
-        self.platform
-            .update_time(self.start_time.elapsed().as_secs_f64());
-
         // Begin the egui frame.
-        self.platform.begin_frame();
+        let raw_input = self.egui_state.take_egui_input(window);
+        self.egui_ctx.begin_frame(raw_input);
 
         // Draw the application GUI.
-        let ctx = self.platform.context();
-        self.update_theme(&ctx);
-        self.gui.ui(&ctx, window);
+        update_theme(&mut self.theme, &self.egui_ctx);
+        self.gui.ui(&self.egui_ctx, window);
 
         // End the egui frame and create all paint jobs to prepare for rendering.
         // TODO: Handle output.needs_repaint to avoid game-mode continuous redraws.
-        let (_output, paint_commands) = self.platform.end_frame(Some(window));
-        self.paint_jobs = self.platform.context().tessellate(paint_commands);
+        let (output, paint_commands) = self.egui_ctx.end_frame();
+        self.egui_state
+            .handle_output(window, &self.egui_ctx, output);
+        self.paint_jobs = self.egui_ctx.tessellate(paint_commands);
     }
 
     /// Render egui.
@@ -145,7 +141,7 @@ impl Framework {
     ) -> Result<(), BackendError> {
         // Upload all resources to the GPU.
         self.rpass
-            .update_texture(&gpu.device, &gpu.queue, &self.platform.context().texture());
+            .update_texture(&gpu.device, &gpu.queue, &self.egui_ctx.texture());
         self.rpass.update_user_textures(&gpu.device, &gpu.queue);
         self.rpass.update_buffers(
             &gpu.device,
@@ -273,13 +269,13 @@ impl Framework {
     pub(crate) fn add_error(&mut self, err: ShowError) {
         self.gui.add_error(err);
     }
+}
 
-    /// Configure the theme based on system settings.
-    fn update_theme(&mut self, ctx: &egui::CtxRef) {
-        if let Some(theme) = self.theme.take() {
-            // Set the style
-            ctx.set_style(create_style(theme));
-        }
+/// Configure the theme based on system settings.
+fn update_theme(theme: &mut Option<Theme>, ctx: &egui::CtxRef) {
+    if let Some(theme) = theme.take() {
+        // Set the style
+        ctx.set_style(create_style(theme));
     }
 }
 
