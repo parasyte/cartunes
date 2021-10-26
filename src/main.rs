@@ -86,7 +86,7 @@ fn create_window() -> Result<(EventLoop<UserEvent>, winit::window::Window, Gpu, 
 
     let (gpu, framework) = {
         let window_size = window.inner_size();
-        let scale_factor = window.scale_factor();
+        let scale_factor = window.scale_factor() as f32;
 
         let mut errors = VecDeque::new();
         let mut warnings = VecDeque::new();
@@ -113,9 +113,6 @@ fn main() -> Result<(), Error> {
     let mut keep_config = ConfigHandler::Replace;
 
     event_loop.run(move |event, _, control_flow| {
-        // Update egui inputs
-        framework.handle_event(&event);
-
         // Handle input events
         if input.update(&event) {
             // Update the scale factor
@@ -153,20 +150,25 @@ fn main() -> Result<(), Error> {
                 }
                 _ => (),
             },
-            Event::WindowEvent { event, .. } => match event {
-                WindowEvent::ThemeChanged(theme) => {
-                    framework.change_theme(theme, false);
-                    window.request_redraw();
-                }
-                WindowEvent::CloseRequested => {
-                    // Exit immediately if we've been asked to keep the config file,
-                    // or if saving was successful
-                    if keep_config == ConfigHandler::Keep || framework.save_config(&window) {
-                        *control_flow = ControlFlow::Exit;
+            Event::WindowEvent { event, .. } => {
+                // Update egui inputs
+                framework.handle_event(&event);
+
+                match event {
+                    WindowEvent::ThemeChanged(theme) => {
+                        framework.change_theme(theme, false);
+                        window.request_redraw();
                     }
+                    WindowEvent::CloseRequested => {
+                        // Exit immediately if we've been asked to keep the config file,
+                        // or if saving was successful
+                        if keep_config == ConfigHandler::Keep || framework.save_config(&window) {
+                            *control_flow = ControlFlow::Exit;
+                        }
+                    }
+                    _ => (),
                 }
-                _ => (),
-            },
+            }
             Event::RedrawRequested(_) => {
                 // Prepare egui
                 framework.prepare(&window);
