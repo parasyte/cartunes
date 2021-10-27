@@ -1,5 +1,6 @@
 use crate::setup::Setup;
 use epaint::Galley;
+use std::cmp::Ordering;
 use std::sync::Arc;
 
 /// Provides structure for representing a grid of string values.
@@ -89,7 +90,7 @@ impl<'setup> SetupGrid<'setup> {
                 });
 
                 let mut colors = colors.iter().cloned().cycle();
-                let mut first_value = None;
+                let mut first_value: Option<String> = None;
 
                 for setup in setups {
                     let values = setup.get(prop_group).unwrap().get_all(prop_name);
@@ -115,8 +116,7 @@ impl<'setup> SetupGrid<'setup> {
                     // Compute diff between `value` and first column
                     let color = colors.next().unwrap_or_else(|| ui.visuals().text_color());
                     let (color, background) = if let Some(first_value) = first_value.as_ref() {
-                        use std::cmp::Ordering;
-                        match value.cmp(first_value) {
+                        match string_compare(&value, first_value) {
                             Ordering::Less => (ui.visuals().text_color(), Some(diff_colors.0)),
                             Ordering::Greater => (ui.visuals().text_color(), Some(diff_colors.1)),
                             Ordering::Equal => (color, None),
@@ -200,6 +200,15 @@ fn intersect_keys<'a>(mut all_keys: impl Iterator<Item = Vec<&'a str>>) -> Vec<&
     }
 
     output
+}
+
+fn string_compare(a: &str, b: &str) -> Ordering {
+    if a.starts_with('-') && b.starts_with('-') {
+        // Reverse parameter order when comparing negative numbers
+        human_sort::compare(b, a)
+    } else {
+        human_sort::compare(a, b)
+    }
 }
 
 #[cfg(test)]
@@ -291,5 +300,36 @@ mod tests {
         let list = vec![keys_a, keys_b];
         let keys = intersect_keys(list.into_iter());
         assert!(keys.is_empty());
+    }
+
+    #[test]
+    fn test_string_compare_text() {
+        assert_eq!(string_compare("a", "b"), Ordering::Less);
+        assert_eq!(string_compare("ab", "abc"), Ordering::Less);
+        assert_eq!(string_compare("abc", "abc"), Ordering::Equal);
+    }
+
+    #[test]
+    fn test_string_compare_numbers() {
+        assert_eq!(string_compare("1", "1"), Ordering::Equal);
+        assert_eq!(string_compare("10", "10"), Ordering::Equal);
+        assert_eq!(string_compare("1", "10"), Ordering::Less);
+        assert_eq!(string_compare("10", "1"), Ordering::Greater);
+
+        assert_eq!(string_compare("1", "2"), Ordering::Less);
+        assert_eq!(string_compare("10", "2"), Ordering::Greater);
+        assert_eq!(string_compare("1", "-2"), Ordering::Greater);
+        assert_eq!(string_compare("10", "-2"), Ordering::Greater);
+        assert_eq!(string_compare("-1", "2"), Ordering::Less);
+        assert_eq!(string_compare("-10", "2"), Ordering::Less);
+        assert_eq!(string_compare("-1", "-2"), Ordering::Greater);
+        assert_eq!(string_compare("-10", "-2"), Ordering::Less);
+    }
+
+    #[test]
+    #[ignore = "Fractions are not yet supported"]
+    fn test_string_compare_fractions() {
+        assert_eq!(string_compare("3/8", "1/2"), Ordering::Less);
+        assert_eq!(string_compare("5/8", "1/2"), Ordering::Greater);
     }
 }

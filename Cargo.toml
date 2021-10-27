@@ -23,6 +23,7 @@ encoding_rs = "0.8"
 env_logger = { version = "0.9", default-features = false, features = ["atty", "humantime", "termcolor"] }
 epaint = { version = "0.15", default-features = false, features = ["single_threaded"] }
 font-loader = "0.11"
+human-sort = "0.2"
 kuchiki = "0.8"
 log = "0.4"
 ordered-multimap = "0.4"
