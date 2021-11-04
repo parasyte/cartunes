@@ -154,12 +154,18 @@ impl Config {
         let doc: Document = fs::read_to_string(&doc_path)?.parse()?;
 
         let setups_path = PathBuf::from(
-            doc["config"]["setups_path"]
-                .as_str()
+            doc.get("config")
+                .and_then(|t| t.get("setups_path"))
+                .and_then(|t| t.as_str())
                 .ok_or_else(|| Error::type_error("config.setups_path", "string"))?,
         );
 
-        let theme = UserTheme::from_item(&doc["config"]["theme"]);
+        let theme = doc
+            .get("config")
+            .and_then(|t| t.get("theme"))
+            .and_then(|t| t.as_str())
+            .unwrap_or("auto");
+        let theme = UserTheme::from_str(theme);
 
         let mut config = Self::new(doc_path, min_size);
         config.doc = doc;
@@ -299,8 +305,8 @@ impl Config {
 
     /// Load track and car info from config.
     fn load_tracks_and_cars(&mut self) -> Result<(), Error> {
-        let table = &self.doc["tracks"];
-        if let Some(tracks) = table.as_table() {
+        let table = &self.doc.get("tracks").and_then(|t| t.as_table());
+        if let Some(tracks) = table {
             for (id, name) in tracks.iter() {
                 let name = name
                     .as_str()
@@ -313,8 +319,8 @@ impl Config {
             return Err(Error::type_error("tracks", "table"));
         }
 
-        let cars = &self.doc["cars"];
-        if let Some(cars) = cars.as_table() {
+        let cars = &self.doc.get("cars").and_then(|t| t.as_table());
+        if let Some(cars) = cars {
             for (id, name) in cars.iter() {
                 let name = name
                     .as_str()
@@ -332,8 +338,13 @@ impl Config {
     /// Load column colors and background colors from config.
     fn load_colors(&mut self) -> Result<(), Error> {
         let mut parsed = Vec::new();
-        let colors = &self.doc["config"]["colors"];
-        if let Some(colors) = colors.as_array() {
+        let colors = &self
+            .doc
+            .get("config")
+            .and_then(|t| t.get("colors"))
+            .and_then(|t| t.as_array());
+
+        if let Some(colors) = colors {
             for (i, color) in colors.iter().enumerate() {
                 let color = color
                     .as_str()
@@ -350,7 +361,12 @@ impl Config {
         // Parse background colors
         let mut background = Vec::new();
         for name in &["background_decrease", "background_increase"] {
-            let color = self.doc["config"][name].as_str();
+            let color = self
+                .doc
+                .get("config")
+                .and_then(|t| t.get(name))
+                .and_then(|t| t.as_str());
+
             if let Some(color) = color {
                 let color =
                     color_from_str(color).map_err(|_| Error::Color(format!("config.{}", name)))?;
@@ -404,16 +420,13 @@ impl Window {
 }
 
 impl UserTheme {
-    /// Create a `UserTheme` from a TOML item.
-    fn from_item(value: &Item) -> Self {
-        value
-            .as_str()
-            .map(|value| match value {
-                "dark" => Self::Dark,
-                "light" => Self::Light,
-                _ => Self::Auto,
-            })
-            .unwrap_or(Self::Auto)
+    /// Create a `UserTheme` from a string slice.
+    fn from_str(value: &str) -> Self {
+        match value {
+            "dark" => Self::Dark,
+            "light" => Self::Light,
+            _ => Self::Auto,
+        }
     }
 
     /// Get a string slice that is TOML-compatible for this `UserTheme`.
