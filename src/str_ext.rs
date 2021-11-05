@@ -1,6 +1,7 @@
 //! String extension traits.
 
 use std::borrow::Cow;
+use std::cmp::Ordering;
 use unicode_segmentation::UnicodeSegmentation;
 
 /// An extension trait for strings that adds a truncation method with ellipses.
@@ -56,6 +57,38 @@ impl<'a> Capitalize<'a> for &'a str {
     }
 }
 
+/// An extension trait for strings that adds "human sort" comparison methods.
+pub(crate) trait HumanCompare {
+    fn human_compare(&self, other: &str) -> Ordering;
+}
+
+impl HumanCompare for String {
+    fn human_compare(&self, other: &str) -> Ordering {
+        human_compare(self, other)
+    }
+}
+
+impl HumanCompare for &String {
+    fn human_compare(&self, other: &str) -> Ordering {
+        human_compare(self, other)
+    }
+}
+
+impl HumanCompare for &str {
+    fn human_compare(&self, other: &str) -> Ordering {
+        human_compare(self, other)
+    }
+}
+
+fn human_compare(a: &str, b: &str) -> Ordering {
+    if a.starts_with('-') && b.starts_with('-') {
+        // Reverse parameter order when comparing negative numbers
+        human_sort::compare(b, a)
+    } else {
+        human_sort::compare(a, b)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -95,5 +128,36 @@ mod tests {
             Cow::from("YOU KNOW, I FIND THAT I (ALWAYS) SHOUT A LOT! SORRY!").capitalize_words(),
             Cow::from("You Know, I Find That I (Always) Shout A Lot! Sorry!"),
         );
+    }
+
+    #[test]
+    fn test_human_compare_text() {
+        assert_eq!("a".human_compare("b"), Ordering::Less);
+        assert_eq!("ab".human_compare("abc"), Ordering::Less);
+        assert_eq!("abc".human_compare("abc"), Ordering::Equal);
+    }
+
+    #[test]
+    fn test_human_compare_numbers() {
+        assert_eq!("1".human_compare("1"), Ordering::Equal);
+        assert_eq!("10".human_compare("10"), Ordering::Equal);
+        assert_eq!("1".human_compare("10"), Ordering::Less);
+        assert_eq!("10".human_compare("1"), Ordering::Greater);
+
+        assert_eq!("1".human_compare("2"), Ordering::Less);
+        assert_eq!("10".human_compare("2"), Ordering::Greater);
+        assert_eq!("1".human_compare("-2"), Ordering::Greater);
+        assert_eq!("10".human_compare("-2"), Ordering::Greater);
+        assert_eq!("-1".human_compare("2"), Ordering::Less);
+        assert_eq!("-10".human_compare("2"), Ordering::Less);
+        assert_eq!("-1".human_compare("-2"), Ordering::Greater);
+        assert_eq!("-10".human_compare("-2"), Ordering::Less);
+    }
+
+    #[test]
+    #[ignore = "Fractions are not yet supported"]
+    fn test_human_compare_fractions() {
+        assert_eq!("3/8".human_compare("1/2"), Ordering::Less);
+        assert_eq!("5/8".human_compare("1/2"), Ordering::Greater);
     }
 }

@@ -67,7 +67,7 @@ fn create_window() -> Result<(EventLoop<UserEvent>, winit::window::Window, Gpu, 
     };
 
     let window_builder = {
-        #[cfg(windows)]
+        #[cfg(target_os = "windows")]
         {
             // Magic number from cartunes.rc
             const ICON_RESOURCE_ID: u16 = 2;
@@ -77,7 +77,7 @@ fn create_window() -> Result<(EventLoop<UserEvent>, winit::window::Window, Gpu, 
             ))
         }
 
-        #[cfg(not(windows))]
+        #[cfg(not(target_os = "windows"))]
         window_builder
     };
 
@@ -145,6 +145,9 @@ fn main() -> Result<(), Error> {
                 }
                 UserEvent::SetupPath(Some(setups_path)) => {
                     framework.update_setups_path(setups_path);
+                }
+                UserEvent::FsChange(event) => {
+                    framework.handle_fs_change(event);
                 }
                 UserEvent::Theme(theme) => {
                     let theme = theme.as_winit_theme(&window);

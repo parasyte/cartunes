@@ -2,14 +2,14 @@
 
 use crate::config::Config;
 use crate::gui::ShowWarning;
-use crate::str_ext::Capitalize;
+use crate::str_ext::{Capitalize, HumanCompare};
 use kuchiki::traits::TendrilSink;
 use ordered_multimap::ListOrderedMultimap;
 use std::collections::{HashMap, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
-use walkdir::{DirEntry, WalkDir};
+use walkdir::WalkDir;
 
 // Parsing setup exports can fail.
 #[derive(Debug, Error)]
@@ -42,6 +42,21 @@ impl Error {
     }
 }
 
+#[derive(Debug)]
+pub(crate) enum UpdateKind {
+    /// A setup has been added; the track name, car name, and index are provided.
+    AddedSetup(String, String, usize),
+
+    /// A setup has been removed; the track name, car name, and index are provided.
+    RemoveSetup(String, String, usize),
+
+    /// A car has been removed; the track name and car name are provided.
+    RemoveCar(String, String),
+
+    /// A track has been removed; the track name is provided.
+    RemoveTrack(String),
+}
+
 /// Internal representation of a setup export.
 ///
 /// The structure is a tree that can be described with this ASCII pictograph.
@@ -50,15 +65,15 @@ impl Error {
 /// [Setups]
 /// ├── "Concord Speedway"
 /// │   ├── "VW Beetle"
-/// │   │   └── ([FileName], [Setup])
+/// │   │   └── SetupInfo
 /// │   └── "Skip Barber Formula 2000"
-/// │       ├── ([FileName], [Setup])
-/// │       ├── ([FileName], [Setup])
-/// │       └── ([FileName], [Setup])
+/// │       ├── SetupInfo
+/// │       ├── SetupInfo
+/// │       └── SetupInfo
 /// └── "Okayama International Raceway"
 ///     └── "VW Beetle"
-///         ├── ([FileName], [Setup])
-///         └── ([FileName], [Setup])
+///         ├── SetupInfo
+///         └── SetupInfo
 /// ```
 ///
 /// The first layer of depth contains track names (human-readable), meaning that setups are sorted
@@ -67,8 +82,9 @@ impl Error {
 /// At the second layer of depth are the car names (human readable). Setups are also sorted by the
 /// cars there were exported for.
 ///
-/// Finally at the third level, each car has a list of `Setup` trees along with the file name that
-/// it was loaded from (without the extension). Each car can have as many setups as needed.
+/// Finally at the third level, each car has a list of [`SetupInfo`] headers, which contains a
+/// `Setup` tree along with the file name that it was loaded from (without the extension) and the
+/// full file path. Each car can have as many setups as needed.
 ///
 /// The `Setup` type is similarly an alias for a deeply nested `HashMap` representing a single
 /// instance of a car setup.
@@ -113,28 +129,29 @@ pub(crate) struct Setups {
     tracks: Tracks,
 }
 
+/// Information about a setup
+pub(crate) struct SetupInfo {
+    /// The setup data.
+    setup: Setup,
+    /// Name of the setup (the filename without extension).
+    name: String,
+    /// Full file path for setup.
+    path: PathBuf,
+}
+
 type Tracks = HashMap<String, Cars>;
-type Cars = HashMap<String, Vec<(String, Setup)>>;
+type Cars = HashMap<String, Vec<SetupInfo>>;
 pub(crate) type Setup = ListOrderedMultimap<String, Props>;
 type Props = ListOrderedMultimap<String, String>;
 
 impl Setups {
     /// Recursively load all HTML files from the config setup exports path into a `Setups` tree.
     pub(crate) fn new(warnings: &mut VecDeque<ShowWarning>, config: &Config) -> Self {
-        // Check if a directory entry is an HTML file.
-        fn is_html(entry: &DirEntry) -> bool {
-            entry
-                .file_name()
-                .to_str()
-                .map(|s| s.ends_with(".htm") || s.ends_with(".html"))
-                .unwrap_or(false)
-        }
-
         let mut setups = Self::default();
         let path = config.get_setups_path();
-        let walker = WalkDir::new(path)
-            .into_iter()
-            .filter_entry(|entry| entry.file_type().is_dir() || is_html(entry));
+        let walker = WalkDir::new(path).into_iter().filter_entry(|entry| {
+            entry.file_type().is_dir() || is_html(entry.file_name().to_str())
+        });
 
         for entry in walker {
             match entry {
@@ -160,7 +177,131 @@ impl Setups {
             }
         }
 
+        // Sort `SetupInfo`s by name.
+        for track in setups.tracks.values_mut() {
+            for setups in track.values_mut() {
+                setups.sort_by(|a, b| a.name().human_compare(b.name()));
+            }
+        }
+
         setups
+    }
+
+    /// Update setups when the file system changes.
+    pub(crate) fn update(&mut self, event: &hotwatch::Event, config: &Config) -> Vec<UpdateKind> {
+        use hotwatch::Event::*;
+
+        let mut result = Vec::new();
+
+        match event {
+            Create(path) | Write(path) => {
+                if path.is_file() && is_html(path.as_path().to_str()) {
+                    self.add(&mut result, path, config);
+                }
+            }
+            Remove(path) => {
+                if is_html(path.as_path().to_str()) {
+                    self.remove(&mut result, path);
+                }
+            }
+            Rename(from, to) => {
+                let old_name_is_html = is_html(from.as_path().to_str());
+                let new_name_is_html = to.is_file() && is_html(to.as_path().to_str());
+
+                if old_name_is_html && !new_name_is_html {
+                    self.remove(&mut result, from);
+                } else if new_name_is_html {
+                    self.add(&mut result, to, config);
+                }
+            }
+            _ => (),
+        }
+
+        result
+    }
+
+    /// Add a path to the setup tree or replace an existing entry.
+    fn add(&mut self, result: &mut Vec<UpdateKind>, path: &Path, config: &Config) {
+        if let Ok((track_name, car_name, setup)) = setup_from_html(path, config) {
+            let file_name = path
+                .file_stem()
+                .map(|s| s.to_string_lossy().to_string())
+                .unwrap_or_else(|| car_name.clone());
+            let cars = self.tracks.entry(track_name.clone()).or_default();
+            let setups = cars.entry(car_name.clone()).or_default();
+
+            // Find an existing SetupInfo by path
+            let index = setups
+                .iter()
+                .enumerate()
+                .find_map(|(i, setup_info)| Some(i).filter(|_| setup_info.path == path));
+
+            if let Some(index) = index {
+                // Special handling for replacements
+                setups[index] = SetupInfo::new(setup, file_name, path);
+            } else {
+                // Find the index where the setup should be inserted
+                let index = setups.partition_point(|setup_info| setup_info.name < file_name);
+                setups.insert(index, SetupInfo::new(setup, file_name, path));
+
+                // Only emit `AddedSetups` when adding a new entry
+                result.push(UpdateKind::AddedSetup(track_name, car_name, index));
+            }
+        }
+    }
+
+    /// Remove a path from the setup tree.
+    fn remove(&mut self, result: &mut Vec<UpdateKind>, path: &Path) {
+        let mut remove_track = None;
+
+        for (track_name, track) in self.tracks.iter_mut() {
+            let mut remove_car = None;
+
+            for (car_name, setups) in track.iter_mut() {
+                // Find the SetupInfo by path
+                let index = setups
+                    .iter()
+                    .enumerate()
+                    .find_map(|(i, setup_info)| Some(i).filter(|_| setup_info.path == path));
+
+                if let Some(index) = index {
+                    // Remove the `SetupInfo` for the removed path
+                    setups.remove(index);
+
+                    // Record the removed setup
+                    result.push(UpdateKind::RemoveSetup(
+                        track_name.to_string(),
+                        car_name.to_string(),
+                        index,
+                    ));
+
+                    if setups.is_empty() {
+                        // Record the removed car
+                        result.push(UpdateKind::RemoveCar(
+                            track_name.to_string(),
+                            car_name.to_string(),
+                        ));
+
+                        remove_car = Some(car_name.to_string());
+                    }
+                }
+            }
+
+            if let Some(car_name) = remove_car {
+                track.remove(&car_name);
+            }
+
+            if track.is_empty() {
+                // Record the removed track
+                result.push(UpdateKind::RemoveTrack(track_name.to_string()));
+
+                remove_track = Some(track_name.to_string());
+            }
+        }
+
+        if let Some(track_name) = remove_track {
+            self.tracks.remove(&track_name);
+        }
     }
 
     /// Get a reference to the tracks tree.
@@ -179,10 +320,36 @@ impl Setups {
             .unwrap_or_else(|| car_name.clone());
         let cars = self.tracks.entry(track_name).or_default();
         let setups = cars.entry(car_name).or_default();
-        setups.push((file_name, setup));
+        setups.push(SetupInfo::new(setup, file_name, path));
 
         Ok(())
     }
+}
+
+impl SetupInfo {
+    /// Create a new `SetupInfo` descriptor.
+    pub(crate) fn new<P: AsRef<Path>>(setup: Setup, name: String, path: P) -> Self {
+        let path = path.as_ref().to_path_buf();
+
+        Self { setup, name, path }
+    }
+
+    /// Get a reference to the inner [`Setup`].
+    pub(crate) fn setup(&self) -> &Setup {
+        &self.setup
+    }
+
+    /// Get a reference to the name.
+    pub(crate) fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+// Check if a directory entry is an HTML file.
+fn is_html(file_name: Option<&str>) -> bool {
+    file_name
+        .map(|s| s.ends_with(".htm") || s.ends_with(".html"))
+        .unwrap_or(false)
 }
 
 /// Parse an HTML file into a `Setup`.
@@ -364,7 +531,11 @@ mod tests {
             .get("Skip Barber Formula 2000")
             .unwrap();
         assert_eq!(cars.len(), 1);
-        let (file_name, skip_barber) = &cars[0];
+        let SetupInfo {
+            setup: skip_barber,
+            name: file_name,
+            ..
+        } = &cars[0];
         assert_eq!(file_name, "skip_barber_centripetal");
         assert_eq!(skip_barber.keys().len(), 6);
 
@@ -375,7 +546,11 @@ mod tests {
             .get("Global Mazda MX-5 Cup")
             .unwrap();
         assert_eq!(cars.len(), 1);
-        let (file_name, mx5) = &cars[0];
+        let SetupInfo {
+            setup: mx5,
+            name: file_name,
+            ..
+        } = &cars[0];
         assert_eq!(file_name, "mx5_charlotte_legends_oval");
         assert_eq!(mx5.keys().len(), 6);
 
@@ -386,7 +561,11 @@ mod tests {
             .get("Dallara P217")
             .unwrap();
         assert_eq!(cars.len(), 1);
-        let (file_name, dallara) = &cars[0];
+        let SetupInfo {
+            setup: dallara,
+            name: file_name,
+            ..
+        } = &cars[0];
         assert_eq!(file_name, "iracing_lemans_default");
         assert_eq!(dallara.keys().len(), 18);
 
@@ -397,7 +576,11 @@ mod tests {
             .get("Porsche 911 GT3 R")
             .unwrap();
         assert_eq!(cars.len(), 1);
-        let (file_name, porche911) = &cars[0];
+        let SetupInfo {
+            setup: porche911,
+            name: file_name,
+            ..
+        } = &cars[0];
         assert_eq!(file_name, "baseline");
         assert_eq!(porche911.keys().len(), 12);
 
