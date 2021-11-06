@@ -42,7 +42,7 @@ impl Error {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub(crate) enum UpdateKind {
     /// A setup has been added; the track name, car name, and index are provided.
     AddedSetup(String, String, usize),
@@ -524,12 +524,8 @@ mod tests {
 
         assert!(warnings.is_empty());
 
-        let cars = setups
-            .tracks()
-            .get("Centripetal Circuit")
-            .unwrap()
-            .get("Skip Barber Formula 2000")
-            .unwrap();
+        let tracks = setups.tracks();
+        let cars = &tracks["Centripetal Circuit"]["Skip Barber Formula 2000"];
         assert_eq!(cars.len(), 1);
         let SetupInfo {
             setup: skip_barber,
@@ -539,12 +535,7 @@ mod tests {
         assert_eq!(file_name, "skip_barber_centripetal");
         assert_eq!(skip_barber.keys().len(), 6);
 
-        let cars = setups
-            .tracks()
-            .get("Charlotte Motor Speedway - Legends Oval")
-            .unwrap()
-            .get("Global Mazda MX-5 Cup")
-            .unwrap();
+        let cars = &tracks["Charlotte Motor Speedway - Legends Oval"]["Global Mazda MX-5 Cup"];
         assert_eq!(cars.len(), 1);
         let SetupInfo {
             setup: mx5,
@@ -554,12 +545,7 @@ mod tests {
         assert_eq!(file_name, "mx5_charlotte_legends_oval");
         assert_eq!(mx5.keys().len(), 6);
 
-        let cars = setups
-            .tracks()
-            .get("Circuit des 24 Heures du Mans - 24 Heures du Mans")
-            .unwrap()
-            .get("Dallara P217")
-            .unwrap();
+        let cars = &tracks["Circuit des 24 Heures du Mans - 24 Heures du Mans"]["Dallara P217"];
         assert_eq!(cars.len(), 1);
         let SetupInfo {
             setup: dallara,
@@ -569,12 +555,7 @@ mod tests {
         assert_eq!(file_name, "iracing_lemans_default");
         assert_eq!(dallara.keys().len(), 18);
 
-        let cars = setups
-            .tracks()
-            .get("Nürburgring Combined")
-            .unwrap()
-            .get("Porsche 911 GT3 R")
-            .unwrap();
+        let cars = &tracks["Nürburgring Combined"]["Porsche 911 GT3 R"];
         assert_eq!(cars.len(), 1);
         let SetupInfo {
             setup: porche911,
@@ -1034,8 +1015,8 @@ mod tests {
             ("Traction control slip", "5 (TC)"),
             ("Throttle shape", "1"),
         ]);
-        let fuel = setup.get("Traction Control").unwrap();
-        assert_eq!(fuel, &expected);
+        let traction_control = setup.get("Traction Control").unwrap();
+        assert_eq!(traction_control, &expected);
 
         // Gear Ratios
         let expected = create_ordered_multimap(&[
@@ -1237,5 +1218,110 @@ mod tests {
         ]);
         let rear = setup.get("Rear").unwrap();
         assert_eq!(rear, &expected);
+    }
+
+    #[test]
+    fn test_add_setup() {
+        use UpdateKind::*;
+
+        fn assert_added(setups: &Setups, file_name: &str) {
+            let tracks = setups.tracks();
+            assert_eq!(tracks.len(), 1);
+            assert_eq!(tracks["Nürburgring Combined"].len(), 1);
+            assert_eq!(tracks["Nürburgring Combined"]["Porsche 911 GT3 R"].len(), 1);
+
+            let SetupInfo { setup, name, .. } =
+                &tracks["Nürburgring Combined"]["Porsche 911 GT3 R"][0];
+
+            assert_eq!(name, file_name);
+            assert_eq!(setup.keys().len(), 12);
+        }
+
+        let config = Config::new("/tmp/some/path.toml", PhysicalSize::new(0, 0));
+
+        let mut setups = Setups::default();
+        assert!(setups.tracks.is_empty());
+
+        let mut result = Vec::new();
+        let path = Path::new("./fixtures/baseline.htm")
+            .canonicalize()
+            .expect("Cannot canonicalize path");
+
+        // Test adding a setup to an empty tree
+        setups.add(&mut result, &path, &config);
+
+        assert_eq!(
+            &result,
+            &[AddedSetup(
+                "Nürburgring Combined".to_string(),
+                "Porsche 911 GT3 R".to_string(),
+                0
+            )]
+        );
+        assert_added(&setups, "baseline");
+
+        // Test adding an existing setup to the tree
+        result.clear();
+        setups.add(&mut result, &path, &config);
+
+        assert_eq!(&result, &[]);
+        assert_added(&setups, "baseline");
+    }
+
+    #[test]
+    fn test_remove_setup() {
+        use UpdateKind::*;
+
+        fn assert_removed(setups: &Setups) {
+            let tracks = setups.tracks();
+            assert_eq!(tracks.len(), 3);
+            assert!(tracks.contains_key("Centripetal Circuit"));
+            assert!(tracks.contains_key("Charlotte Motor Speedway - Legends Oval"));
+            assert!(tracks.contains_key("Circuit des 24 Heures du Mans - 24 Heures du Mans"));
+        }
+
+        let mut config = Config::new("/tmp/some/path.toml", PhysicalSize::new(0, 0));
+        config.update_setups_path("./fixtures");
+        let mut warnings = VecDeque::new();
+        let mut setups = Setups::new(&mut warnings, &config);
+
+        let tracks = setups.tracks();
+        assert_eq!(tracks.len(), 4);
+        assert!(tracks.contains_key("Centripetal Circuit"));
+        assert!(tracks.contains_key("Charlotte Motor Speedway - Legends Oval"));
+        assert!(tracks.contains_key("Circuit des 24 Heures du Mans - 24 Heures du Mans"));
+        assert!(tracks.contains_key("Nürburgring Combined"));
+
+        let mut result = Vec::new();
+        let path = Path::new("./fixtures/baseline.htm")
+            .canonicalize()
+            .expect("Cannot canonicalize path");
+
+        // Test removing a setup from the tree
+        setups.remove(&mut result, &path);
+
+        assert_eq!(
+            &result,
+            &[
+                RemoveSetup(
+                    "Nürburgring Combined".to_string(),
+                    "Porsche 911 GT3 R".to_string(),
+                    0
+                ),
+                RemoveCar(
+                    "Nürburgring Combined".to_string(),
+                    "Porsche 911 GT3 R".to_string()
+                ),
+                RemoveTrack("Nürburgring Combined".to_string()),
+            ]
+        );
+        assert_removed(&setups);
+
+        // Test removing a non-existent setup from the tree
+        result.clear();
+        setups.remove(&mut result, &path);
+
+        assert_eq!(&result, &[]);
+        assert_removed(&setups);
     }
 }
