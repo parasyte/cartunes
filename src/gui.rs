@@ -4,13 +4,15 @@ use self::grid::SetupGrid;
 use crate::config::{Config, UserTheme};
 use crate::framework::UserEvent;
 use crate::setup::{Setup, Setups};
-use crate::str_ext::Ellipsis;
+use crate::str_ext::{Ellipsis, HumanCompare};
 use copypasta::{ClipboardContext, ClipboardProvider};
 use egui::widgets::color_picker::{color_edit_button_srgba, Alpha};
 use egui::{CtxRef, Widget};
+use hotwatch::Hotwatch;
 use std::collections::{HashMap, VecDeque};
 use std::path::Path;
 use std::time::{Duration, Instant};
+use thiserror::Error;
 use winit::event_loop::EventLoopProxy;
 
 mod grid;
@@ -22,6 +24,9 @@ pub(crate) struct Gui {
 
     /// A tree of `Setups` containing all known setup exports.
     setups: Setups,
+
+    /// Filesystem watcher for changes to any setup exports.
+    hotwatch: Hotwatch,
 
     /// Selected track name.
     selected_track_name: Option<String>,
@@ -85,6 +90,12 @@ pub(crate) struct ShowWarning {
     context: String,
 }
 
+#[derive(Debug, Error)]
+pub(crate) enum Error {
+    #[error("File system watch error: {0}")]
+    Notify(#[from] hotwatch::Error),
+}
+
 impl Gui {
     /// Create a GUI.
     pub(crate) fn new(
@@ -93,10 +104,16 @@ impl Gui {
         event_loop_proxy: EventLoopProxy<UserEvent>,
         show_errors: VecDeque<ShowError>,
         show_warnings: VecDeque<ShowWarning>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, Error> {
+        let mut hotwatch = Hotwatch::new()?;
+        let watcher = Self::watch_setups_path(event_loop_proxy.clone());
+
+        hotwatch.watch(config.get_setups_path(), watcher)?;
+
+        Ok(Self {
             config,
             setups,
+            hotwatch,
             selected_track_name: None,
             selected_car_name: None,
             selected_setups: Vec::new(),
@@ -107,7 +124,7 @@ impl Gui {
             show_errors,
             show_warnings,
             show_tooltips: HashMap::new(),
-        }
+        })
     }
 
     /// Draw the UI using egui.
@@ -208,11 +225,104 @@ impl Gui {
         }
     }
 
+    /// Create a file system watcher.
+    fn watch_setups_path(event_loop_proxy: EventLoopProxy<UserEvent>) -> impl Fn(hotwatch::Event) {
+        move |event| {
+            event_loop_proxy
+                .send_event(UserEvent::FsChange(event))
+                .expect("Event loop must exist");
+        }
+    }
+
+    /// Handle file system change events.
+    ///
+    /// Called by the closure from `Self::watch_setups_path`.
+    pub(crate) fn handle_fs_change(&mut self, event: hotwatch::Event) {
+        use crate::setup::UpdateKind::*;
+
+        // Update the setups tree.
+        let updates = self.setups.update(&event, &self.config);
+        for update in updates {
+            match update {
+                AddedSetup(track_name, car_name, index) => {
+                    if self.selected_track_name.as_ref() == Some(&track_name)
+                        && self.selected_car_name.as_ref() == Some(&car_name)
+                    {
+                        // Update selected setups when a new one is added
+                        for i in self.selected_setups.iter_mut() {
+                            if *i >= index {
+                                *i += 1;
+                            }
+                        }
+                    }
+                }
+                RemovedSetup(track_name, car_name, index) => {
+                    if self.selected_track_name.as_ref() == Some(&track_name)
+                        && self.selected_car_name.as_ref() == Some(&car_name)
+                    {
+                        // Update selected setups when an old one is removed
+                        self.selected_setups.retain(|i| *i != index);
+                        for i in self.selected_setups.iter_mut() {
+                            if *i >= index {
+                                *i -= 1;
+                            }
+                        }
+                    }
+                }
+                RemovedCar(track_name, car_name) => {
+                    if self.selected_track_name.as_ref() == Some(&track_name)
+                        && self.selected_car_name.as_ref() == Some(&car_name)
+                    {
+                        self.selected_car_name = None;
+                        self.selected_setups.clear();
+                    }
+                }
+                RemovedTrack(track_name) => {
+                    if self.selected_track_name.as_ref() == Some(&track_name) {
+                        self.selected_track_name = None;
+                        self.selected_car_name = None;
+                        self.selected_setups.clear();
+                    }
+                }
+            }
+        }
+
+        // Show warning window if necessary.
+        if let hotwatch::Event::Error(error, path) = event {
+            let msg = path.map_or("Error while watching file system".to_string(), |path| {
+                format!("Error while watching path: `{:?}`", path)
+            });
+
+            self.show_warnings.push_front(ShowWarning::new(error, msg));
+        }
+    }
+
     /// Update setups export path.
     pub(crate) fn update_setups_path<P: AsRef<Path>>(&mut self, setups_path: P) {
+        if let Err(error) = self.hotwatch.unwatch(self.config.get_setups_path()) {
+            self.show_warnings.push_front(ShowWarning::new(
+                error,
+                format!(
+                    "Unable to stop watching setup exports path for changes: `{:?}`",
+                    self.config.get_setups_path()
+                ),
+            ));
+        }
+
         self.config.update_setups_path(setups_path);
         self.setups = Setups::new(&mut self.show_warnings, &self.config);
         self.clear_filters();
+
+        let watcher = Self::watch_setups_path(self.event_loop_proxy.clone());
+        if let Err(error) = self.hotwatch.watch(self.config.get_setups_path(), watcher) {
+            self.show_warnings.push_front(ShowWarning::new(
+                error,
+                format!(
+                    "Unable to watch setup exports path for changes: `{:?}`",
+                    self.config.get_setups_path()
+                ),
+            ));
+        }
     }
 
     /// Clear track, car, and setup filters.
@@ -233,7 +343,7 @@ impl Gui {
         };
         track_selection.show_ui(ui, |ui| {
             let mut track_names: Vec<_> = self.setups.tracks().keys().collect();
-            track_names.sort_unstable();
+            track_names.sort_unstable_by(|a, b| a.human_compare(b));
 
             for track_name in track_names {
                 let checked = self.selected_track_name.as_ref() == Some(track_name);
@@ -282,7 +392,7 @@ impl Gui {
                         .expect("Invalid track name")
                         .keys()
                         .collect();
-                    car_names.sort_unstable();
+                    car_names.sort_unstable_by(|a, b| a.human_compare(b));
 
                     for car_name in car_names {
                         let checked = self.selected_car_name.as_ref() == Some(car_name);
@@ -317,16 +427,13 @@ impl Gui {
                     output_track_name = track_name.as_str();
                     output_car_name = car_name.as_str();
 
-                    let mut setups: Vec<_> = tracks
+                    let setups = tracks
                         .get(track_name)
                         .expect("Invalid track name")
                         .get(car_name)
-                        .expect("Invalid car name")
-                        .iter()
-                        .collect();
-                    setups.sort_unstable_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
+                        .expect("Invalid car name");
 
-                    for (i, (name, _)) in setups.iter().enumerate() {
+                    for (i, info) in setups.iter().enumerate() {
                         let position = selected_setups.iter().position(|&v| v == i);
                         let mut checked = position.is_some();
                         let color = position
@@ -335,7 +442,7 @@ impl Gui {
                             .cloned()
                             .unwrap_or_else(|| ui.visuals().text_color());
 
-                        let checkbox = egui::Checkbox::new(&mut checked, name)
+                        let checkbox = egui::Checkbox::new(&mut checked, info.name())
                             .text_color(color)
                             .ui(ui);
                         if checkbox.clicked() {
@@ -348,7 +455,7 @@ impl Gui {
                     }
 
                     for i in selected_setups {
-                        output.push(&setups[*i].1);
+                        output.push(setups[*i].setup());
                     }
                 }
             }

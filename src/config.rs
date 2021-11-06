@@ -193,14 +193,14 @@ impl Config {
 
     /// Get window configuration if it's valid.
     pub(crate) fn get_window(&self) -> Option<Window> {
-        let window = &self.doc["window"];
+        let window = &self.doc.get("window")?;
 
-        let x = window["x"].as_integer()?;
-        let y = window["y"].as_integer()?;
+        let x = window.get("x").and_then(|t| t.as_integer())?;
+        let y = window.get("y").and_then(|t| t.as_integer())?;
         let position = PhysicalPosition::new(x as i32, y as i32);
 
-        let width = window["width"].as_integer()?;
-        let height = window["height"].as_integer()?;
+        let width = window.get("width").and_then(|t| t.as_integer())?;
+        let height = window.get("height").and_then(|t| t.as_integer())?;
         let size = PhysicalSize::new(
             (width as u32).max(self.min_size.width),
             (height as u32).max(self.min_size.height),
@@ -221,7 +221,10 @@ impl Config {
 
     /// Update the setup exports path.
     pub(crate) fn update_setups_path<P: AsRef<Path>>(&mut self, setups_path: P) {
-        self.setups_path = setups_path.as_ref().to_path_buf();
+        self.setups_path = setups_path
+            .as_ref()
+            .canonicalize()
+            .unwrap_or_else(|_| setups_path.as_ref().to_path_buf());
 
         // Note that to_string_lossy() is destructive when the path contains invalid UTF-8 sequences.
         // If this is a problem in practice, we _could_ write unencodable paths as an array of

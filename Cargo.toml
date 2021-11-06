@@ -24,6 +24,7 @@ env_logger = { version = "0.9", default-features = false, features = ["atty", "h
 epaint = { version = "0.15", default-features = false, features = ["single_threaded"] }
 font-loader = "0.11"
 human-sort = "0.2"
+hotwatch = "0.4"
 kuchiki = "0.8"
 log = "0.4"
 ordered-multimap = "0.4"
@@ -42,6 +43,9 @@ winit_input_helper = "0.10"
 
 [target.'cfg(windows)'.build-dependencies]
 embed-resource = "1.6"
+
+[dev-dependencies]
+tempfile = "3.2"
 
 [profile.release]
 codegen-units = 1

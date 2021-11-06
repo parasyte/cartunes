@@ -35,7 +35,7 @@ pub(crate) enum Error {
 }
 
 /// User event handling is performed with this type.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug)]
 pub(crate) enum UserEvent {
     /// Configuration error handling events
     ConfigHandler(ConfigHandler),
@@ -45,6 +45,9 @@ pub(crate) enum UserEvent {
 
     /// Change the path for setup export files.
     SetupPath(Option<PathBuf>),
+
+    /// File system event for the setup export path.
+    FsChange(hotwatch::Event),
 
     /// Change the theme preference.
     Theme(UserTheme),
@@ -101,6 +104,11 @@ impl Framework {
     /// Handle input events from the window manager.
     pub(crate) fn handle_event(&mut self, event: &winit::event::WindowEvent) {
         self.egui_state.on_event(&self.egui_ctx, event);
+    }
+
+    /// Handle file system change events.
+    pub(crate) fn handle_fs_change(&mut self, event: hotwatch::Event) {
+        self.gui.handle_fs_change(event);
     }
 
     /// Resize egui.
