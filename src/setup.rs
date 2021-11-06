@@ -48,13 +48,13 @@ pub(crate) enum UpdateKind {
     AddedSetup(String, String, usize),
 
     /// A setup has been removed; the track name, car name, and index are provided.
-    RemoveSetup(String, String, usize),
+    RemovedSetup(String, String, usize),
 
     /// A car has been removed; the track name and car name are provided.
-    RemoveCar(String, String),
+    RemovedCar(String, String),
 
     /// A track has been removed; the track name is provided.
-    RemoveTrack(String),
+    RemovedTrack(String),
 }
 
 /// Internal representation of a setup export.
@@ -196,7 +196,7 @@ impl Setups {
         match event {
             Create(path) | Write(path) => {
                 if path.is_file() && is_html(path.as_path().to_str()) {
-                    self.add(&mut result, path, config);
+                    self.add(&mut result, path, None, config);
                 }
             }
             Remove(path) => {
@@ -211,7 +211,7 @@ impl Setups {
                 if old_name_is_html && !new_name_is_html {
                     self.remove(&mut result, from);
                 } else if new_name_is_html {
-                    self.add(&mut result, to, config);
+                    self.add(&mut result, to, Some(from), config);
                 }
             }
             _ => (),
@@ -221,7 +221,13 @@ impl Setups {
     }
 
     /// Add a path to the setup tree or replace an existing entry.
-    fn add(&mut self, result: &mut Vec<UpdateKind>, path: &Path, config: &Config) {
+    fn add(
+        &mut self,
+        result: &mut Vec<UpdateKind>,
+        path: &Path,
+        old_path: Option<&Path>,
+        config: &Config,
+    ) {
         if let Ok((track_name, car_name, setup)) = setup_from_html(path, config) {
             let file_name = path
                 .file_stem()
@@ -231,10 +237,11 @@ impl Setups {
             let setups = cars.entry(car_name.clone()).or_default();
 
             // Find an existing SetupInfo by path
-            let index = setups
-                .iter()
-                .enumerate()
-                .find_map(|(i, setup_info)| Some(i).filter(|_| setup_info.path == path));
+            let index = setups.iter().enumerate().find_map(|(i, setup_info)| {
+                Some(i).filter(|_| {
+                    setup_info.path == path || Some(setup_info.path.as_path()) == old_path
+                })
+            });
 
             if let Some(index) = index {
                 // Special handling for replacements
@@ -269,7 +276,7 @@ impl Setups {
                     setups.remove(index);
 
                     // Record the removed setup
-                    result.push(UpdateKind::RemoveSetup(
+                    result.push(UpdateKind::RemovedSetup(
                         track_name.to_string(),
                         car_name.to_string(),
                         index,
@@ -277,7 +284,7 @@ impl Setups {
 
                     if setups.is_empty() {
                         // Record the removed car
-                        result.push(UpdateKind::RemoveCar(
+                        result.push(UpdateKind::RemovedCar(
                             track_name.to_string(),
                             car_name.to_string(),
                         ));
@@ -293,7 +300,7 @@ impl Setups {
 
             if track.is_empty() {
                 // Record the removed track
-                result.push(UpdateKind::RemoveTrack(track_name.to_string()));
+                result.push(UpdateKind::RemovedTrack(track_name.to_string()));
 
                 remove_track = Some(track_name.to_string());
             }
@@ -1237,18 +1244,17 @@ mod tests {
             assert_eq!(setup.keys().len(), 12);
         }
 
-        let config = Config::new("/tmp/some/path.toml", PhysicalSize::new(0, 0));
-
         let mut setups = Setups::default();
         assert!(setups.tracks.is_empty());
 
+        let config = Config::new("/tmp/some/path.toml", PhysicalSize::new(0, 0));
         let mut result = Vec::new();
         let path = Path::new("./fixtures/baseline.htm")
             .canonicalize()
             .expect("Cannot canonicalize path");
 
         // Test adding a setup to an empty tree
-        setups.add(&mut result, &path, &config);
+        setups.add(&mut result, &path, None, &config);
 
         assert_eq!(
             &result,
@@ -1262,7 +1268,7 @@ mod tests {
 
         // Test adding an existing setup to the tree
         result.clear();
-        setups.add(&mut result, &path, &config);
+        setups.add(&mut result, &path, None, &config);
 
         assert_eq!(&result, &[]);
         assert_added(&setups, "baseline");
@@ -1303,16 +1309,16 @@ mod tests {
         assert_eq!(
             &result,
             &[
-                RemoveSetup(
+                RemovedSetup(
                     "Nürburgring Combined".to_string(),
                     "Porsche 911 GT3 R".to_string(),
                     0
                 ),
-                RemoveCar(
+                RemovedCar(
                     "Nürburgring Combined".to_string(),
                     "Porsche 911 GT3 R".to_string()
                 ),
-                RemoveTrack("Nürburgring Combined".to_string()),
+                RemovedTrack("Nürburgring Combined".to_string()),
             ]
         );
         assert_removed(&setups);
@@ -1323,5 +1329,132 @@ mod tests {
 
         assert_eq!(&result, &[]);
         assert_removed(&setups);
+    }
+
+    #[test]
+    fn test_update_setup() {
+        use UpdateKind::*;
+
+        let mut setups = Setups::default();
+        assert!(setups.tracks.is_empty());
+
+        let config = Config::new("/tmp/some/path.toml", PhysicalSize::new(0, 0));
+        let path1 = Path::new("./fixtures/baseline.htm")
+            .canonicalize()
+            .expect("Cannot canonicalize path");
+        let path2 = Path::new("./fixtures/skip_barber_centripetal.htm")
+            .canonicalize()
+            .expect("Cannot canonicalize path");
+        let path3 = tempfile::Builder::new()
+            .suffix(".html")
+            .tempfile()
+            .expect("Unable to create temp file")
+            .path()
+            .canonicalize()
+            .expect("Cannot canonicalize path");
+        std::fs::copy(&path2, &path3).expect("Unable to copy file");
+        let path4 = tempfile::Builder::new()
+            .suffix(".non-html-file")
+            .tempfile()
+            .expect("Unable to create temp file")
+            .path()
+            .canonicalize()
+            .expect("Cannot canonicalize path");
+
+        // Test adding a setup to an empty tree with Write
+        let event = hotwatch::Event::Create(path1.clone());
+        let result = setups.update(&event, &config);
+
+        assert_eq!(
+            &result,
+            &[AddedSetup(
+                "Nürburgring Combined".to_string(),
+                "Porsche 911 GT3 R".to_string(),
+                0
+            )]
+        );
+        assert_eq!(setups.tracks.len(), 1);
+
+        // Test adding an existing setup to the tree
+        let event = hotwatch::Event::Write(path1.clone());
+        let result = setups.update(&event, &config);
+
+        assert_eq!(&result, &[]);
+        assert_eq!(setups.tracks.len(), 1);
+
+        // Test adding a setup to the tree with Create
+        let event = hotwatch::Event::Create(path2.clone());
+        let result = setups.update(&event, &config);
+
+        assert_eq!(
+            &result,
+            &[AddedSetup(
+                "Centripetal Circuit".to_string(),
+                "Skip Barber Formula 2000".to_string(),
+                0
+            )]
+        );
+        assert_eq!(setups.tracks.len(), 2);
+
+        // Test removing a setup from the tree
+        let event = hotwatch::Event::Remove(path1);
+        let result = setups.update(&event, &config);
+
+        assert_eq!(
+            &result,
+            &[
+                RemovedSetup(
+                    "Nürburgring Combined".to_string(),
+                    "Porsche 911 GT3 R".to_string(),
+                    0
+                ),
+                RemovedCar(
+                    "Nürburgring Combined".to_string(),
+                    "Porsche 911 GT3 R".to_string()
+                ),
+                RemovedTrack("Nürburgring Combined".to_string()),
+            ]
+        );
+        assert_eq!(setups.tracks.len(), 1);
+
+        // Test renaming a setup in the tree
+        let name = &setups.tracks["Centripetal Circuit"]["Skip Barber Formula 2000"][0].name;
+        assert_eq!(name, "skip_barber_centripetal");
+
+        let event = hotwatch::Event::Rename(path2, path3.clone());
+        let result = setups.update(&event, &config);
+
+        assert_eq!(&result, &[]);
+        assert_eq!(setups.tracks.len(), 1);
+
+        let name = &setups.tracks["Centripetal Circuit"]["Skip Barber Formula 2000"][0].name;
+        let expected_name = path3
+            .as_path()
+            .file_stem()
+            .expect("Unable to get file stem")
+            .to_str()
+            .expect("Unable to convert &OsStr to &str");
+        assert_eq!(name, expected_name);
+
+        // Test renaming a setup in the tree to a non-html (unparseable) file
+        let event = hotwatch::Event::Rename(path3, path4);
+        let result = setups.update(&event, &config);
+
+        assert_eq!(
+            &result,
+            &[
+                RemovedSetup(
+                    "Centripetal Circuit".to_string(),
+                    "Skip Barber Formula 2000".to_string(),
+                    0
+                ),
+                RemovedCar(
+                    "Centripetal Circuit".to_string(),
+                    "Skip Barber Formula 2000".to_string()
+                ),
+                RemovedTrack("Centripetal Circuit".to_string()),
+            ]
+        );
+        assert!(setups.tracks.is_empty());
     }
 }

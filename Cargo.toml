@@ -44,6 +44,9 @@ winit_input_helper = "0.10"
 [target.'cfg(windows)'.build-dependencies]
 embed-resource = "1.6"
 
+[dev-dependencies]
+tempfile = "3.2"
+
 [profile.release]
 codegen-units = 1
 lto = true

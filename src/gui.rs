@@ -256,7 +256,7 @@ impl Gui {
                         }
                     }
                 }
-                RemoveSetup(track_name, car_name, index) => {
+                RemovedSetup(track_name, car_name, index) => {
                     if self.selected_track_name.as_ref() == Some(&track_name)
                         && self.selected_car_name.as_ref() == Some(&car_name)
                     {
@@ -269,7 +269,7 @@ impl Gui {
                         }
                     }
                 }
-                RemoveCar(track_name, car_name) => {
+                RemovedCar(track_name, car_name) => {
                     if self.selected_track_name.as_ref() == Some(&track_name)
                         && self.selected_car_name.as_ref() == Some(&car_name)
                     {
@@ -277,7 +277,7 @@ impl Gui {
                         self.selected_setups.clear();
                     }
                 }
-                RemoveTrack(track_name) => {
+                RemovedTrack(track_name) => {
                     if self.selected_track_name.as_ref() == Some(&track_name) {
                         self.selected_track_name = None;
                         self.selected_car_name = None;
