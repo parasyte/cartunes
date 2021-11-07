@@ -216,7 +216,7 @@ impl UpdateCheckerThread {
         self.check();
 
         for msg in self.receiver.take().expect("Missing receiver").iter() {
-            match dbg!(msg) {
+            match msg {
                 UpdateCheckerMessage::Stop => break,
                 UpdateCheckerMessage::Ping => continue,
                 UpdateCheckerMessage::Timeout => {
