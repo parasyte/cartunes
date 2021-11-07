@@ -3,7 +3,7 @@
 use crate::config::{Config, Error as ConfigError, UserTheme};
 use crate::gpu::Gpu;
 use crate::gui::{ErrorButton, Gui, ShowError, ShowWarning};
-use crate::updates::{ReleaseBody, UpdateChecker};
+use crate::updates::{UpdateChecker, UpdateNotification};
 use directories::ProjectDirs;
 use egui::{ClippedMesh, CtxRef};
 use egui_wgpu_backend::{BackendError, RenderPass, ScreenDescriptor};
@@ -59,7 +59,7 @@ pub(crate) enum UserEvent {
     UpdateCheck,
 
     /// Show update message.
-    UpdateAvailable(ReleaseBody),
+    UpdateAvailable(UpdateNotification),
 }
 
 /// How the user wants to handle errors with reading the config file.
@@ -271,7 +271,7 @@ impl Framework {
     pub(crate) fn recreate_update_check(&mut self) {
         // Stop the old update checker
         if let Some(update_check) = self.update_checker.take() {
-            if let Err(err) = update_check.stop() {
+            if let Err(err) = update_check.stop(false) {
                 let warn = ShowWarning::new(err, "Error while stopping update checker");
                 self.gui.add_warning(warn);
             }
@@ -326,7 +326,7 @@ impl Framework {
     }
 
     /// Add an update notification to the GUI.
-    pub(crate) fn add_update_notification(&mut self, notification: ReleaseBody) {
+    pub(crate) fn add_update_notification(&mut self, notification: UpdateNotification) {
         self.gui.add_update_notification(notification);
     }
 }

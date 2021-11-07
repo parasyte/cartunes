@@ -5,7 +5,7 @@ use crate::config::{Config, UserTheme};
 use crate::framework::UserEvent;
 use crate::setup::{Setup, Setups};
 use crate::str_ext::{Ellipsis, HumanCompare};
-use crate::updates::{ReleaseBody, UpdateFrequency};
+use crate::updates::{UpdateFrequency, UpdateNotification};
 use copypasta::{ClipboardContext, ClipboardProvider};
 use egui::widgets::color_picker::{color_edit_button_srgba, Alpha};
 use egui::{CtxRef, Widget};
@@ -60,7 +60,7 @@ pub(crate) struct Gui {
     show_warnings: VecDeque<ShowWarning>,
 
     /// Show an update notification message.
-    show_update_notification: Option<ReleaseBody>,
+    show_update_notification: Option<UpdateNotification>,
 
     /// Show a tooltip.
     show_tooltips: HashMap<egui::Id, (String, Instant)>,
@@ -829,7 +829,7 @@ impl Gui {
     }
 
     /// Add a n update notification to the GUI.
-    pub(crate) fn add_update_notification(&mut self, notification: ReleaseBody) {
+    pub(crate) fn add_update_notification(&mut self, notification: UpdateNotification) {
         self.show_update_notification = Some(notification);
     }
 
@@ -851,14 +851,14 @@ impl Gui {
                         "You are using version: ",
                         env!("CARGO_PKG_VERSION"),
                     ));
-                    ui.label(format!("New version: {}", update_notification.name));
+                    ui.label(format!("New version: {}", update_notification.version));
                     ui.add_space(size);
                     ui.label("Release notes:");
-                    ui.label(&update_notification.body);
+                    ui.label(&update_notification.release_notes);
 
                     ui.separator();
 
-                    ui.hyperlink_to("Download update", &update_notification.html_url);
+                    ui.hyperlink_to("Download update", &update_notification.update_url);
                 });
         }
     }

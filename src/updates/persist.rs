@@ -1,5 +1,6 @@
 //! Persistence for update checker.
 
+use super::UpdateNotification;
 use crate::framework::cache_path;
 use semver::Version;
 use std::fs;
@@ -45,6 +46,15 @@ pub(crate) struct Persist {
 
     /// Last known version.
     last_version: Version,
+
+    /// Current application version.
+    current_version: Version,
+
+    /// Update release notes.
+    release_notes: String,
+
+    /// Update URL.
+    update_url: String,
 }
 
 impl Persist {
@@ -57,11 +67,12 @@ impl Persist {
             Ok(data) => data.parse()?,
             Err(_) => {
                 let mut doc = Document::new();
-                let last_check = 0.0;
                 let last_version = Version::parse(env!("CARGO_PKG_VERSION"))?;
 
-                doc["last_check"] = toml_edit::value(last_check);
+                doc["last_check"] = toml_edit::value(0.0);
                 doc["last_version"] = toml_edit::value(last_version.to_string());
+                doc["release_notes"] = toml_edit::value("");
+                doc["update_url"] = toml_edit::value("");
 
                 doc
             }
@@ -75,11 +86,23 @@ impl Persist {
             .ok_or(Error::LastUpdate)?
             .parse()?;
 
+        let current_version = Version::parse(env!("CARGO_PKG_VERSION"))?;
+
+        let release_notes = doc["release_notes"]
+            .as_str()
+            .unwrap_or_default()
+            .to_string();
+
+        let update_url = doc["update_url"].as_str().unwrap_or_default().to_string();
+
         Ok(Self {
             doc_path,
             doc,
             last_check,
             last_version,
+            current_version,
+            release_notes,
+            update_url,
         })
     }
 
@@ -120,5 +143,27 @@ impl Persist {
     pub(crate) fn update_last_version(&mut self, last_version: Version) {
         self.last_version = last_version;
         self.doc["last_version"] = toml_edit::value(self.last_version.to_string());
+    }
+
+    pub(crate) fn current_version(&self) -> &Version {
+        &self.current_version
+    }
+
+    pub(crate) fn update_release_notes(&mut self, release_notes: String) {
+        self.release_notes = release_notes;
+        self.doc["release_notes"] = toml_edit::value(&self.release_notes);
+    }
+
+    pub(crate) fn update_url(&mut self, update_url: String) {
+        self.update_url = update_url;
+        self.doc["update_url"] = toml_edit::value(&self.update_url);
+    }
+
+    pub(crate) fn get_update_notification(&self) -> UpdateNotification {
+        UpdateNotification {
+            version: self.last_version.clone(),
+            release_notes: self.release_notes.clone(),
+            update_url: self.update_url.clone(),
+        }
     }
 }
