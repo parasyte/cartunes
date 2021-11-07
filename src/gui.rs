@@ -5,6 +5,7 @@ use crate::config::{Config, UserTheme};
 use crate::framework::UserEvent;
 use crate::setup::{Setup, Setups};
 use crate::str_ext::{Ellipsis, HumanCompare};
+use crate::updates::{ReleaseBody, UpdateFrequency};
 use copypasta::{ClipboardContext, ClipboardProvider};
 use egui::widgets::color_picker::{color_edit_button_srgba, Alpha};
 use egui::{CtxRef, Widget};
@@ -49,11 +50,17 @@ pub(crate) struct Gui {
     /// Show the "Warning" window.
     warning: bool,
 
+    /// Show the "Update Notification" window.
+    update_notification: bool,
+
     /// Show an error message.
     show_errors: VecDeque<ShowError>,
 
     /// Show a warning message.
     show_warnings: VecDeque<ShowWarning>,
+
+    /// Show an update notification message.
+    show_update_notification: Option<ReleaseBody>,
 
     /// Show a tooltip.
     show_tooltips: HashMap<egui::Id, (String, Instant)>,
@@ -121,8 +128,10 @@ impl Gui {
             about: false,
             preferences: false,
             warning: false,
+            update_notification: false,
             show_errors,
             show_warnings,
+            show_update_notification: None,
             show_tooltips: HashMap::new(),
         })
     }
@@ -158,35 +167,69 @@ impl Gui {
         });
 
         // Draw the footer
-        if !self.show_warnings.is_empty() {
+        if self.show_update_notification.is_some() || !self.show_warnings.is_empty() {
             egui::TopBottomPanel::bottom("footer-container").show(ctx, |ui| {
-                let rect = ui
-                    .horizontal(|ui| {
-                        let rect = ui.available_rect_before_wrap();
-                        let size = ui.spacing().interact_size.y;
-                        let center = egui::Vec2::splat(size / 2.0);
-                        let yellow = egui::Color32::from_rgb(210, 210, 40);
-                        let len = self.show_warnings.len();
+                if self.show_update_notification.is_some() {
+                    let rect = ui
+                        .horizontal(|ui| {
+                            let rect = ui.available_rect_before_wrap();
+                            let size = ui.spacing().interact_size.y;
+                            let center = egui::Vec2::splat(size / 2.0);
+                            let green = egui::Color32::from_rgb(40, 210, 40);
 
-                        ui.spacing_mut().item_spacing.x /= 2.0;
+                            ui.spacing_mut().item_spacing.x /= 2.0;
+                            ui.painter()
+                                .circle_filled(rect.min + center, center.x - 3.0, green);
+                            ui.add_space(size);
+                            ui.label("Update available");
+                            ui.add_space(0.0);
+                        })
+                        .response
+                        .rect;
+                    let response = ui.interact(
+                        rect,
+                        egui::Id::new("update-notification-button"),
+                        egui::Sense::click(),
+                    );
+
+                    if response.hovered() {
+                        let hovered = ui.visuals().widgets.hovered;
                         ui.painter()
-                            .circle_filled(rect.min + center, center.x - 3.0, yellow);
-                        ui.add_space(size);
-                        ui.label(format!("{} Warning{}", len, if len > 1 { "s" } else { "" }));
-                        ui.add_space(0.0);
-                    })
-                    .response
-                    .rect;
-                let response =
-                    ui.interact(rect, egui::Id::new("warnings-button"), egui::Sense::click());
-
-                if response.hovered() {
-                    let hovered = ui.visuals().widgets.hovered;
-                    ui.painter()
-                        .rect_stroke(rect, hovered.corner_radius, hovered.bg_stroke);
+                            .rect_stroke(rect, hovered.corner_radius, hovered.bg_stroke);
+                    }
+                    if response.clicked() {
+                        self.update_notification = true;
+                    }
                 }
-                if response.clicked() {
-                    self.warning = true;
+                if !self.show_warnings.is_empty() {
+                    let rect = ui
+                        .horizontal(|ui| {
+                            let rect = ui.available_rect_before_wrap();
+                            let size = ui.spacing().interact_size.y;
+                            let center = egui::Vec2::splat(size / 2.0);
+                            let yellow = egui::Color32::from_rgb(210, 210, 40);
+                            let len = self.show_warnings.len();
+
+                            ui.spacing_mut().item_spacing.x /= 2.0;
+                            ui.painter()
+                                .circle_filled(rect.min + center, center.x - 3.0, yellow);
+                            ui.add_space(size);
+                            ui.label(format!("{} Warning{}", len, if len > 1 { "s" } else { "" }));
+                            ui.add_space(0.0);
+                        })
+                        .response
+                        .rect;
+                    let response =
+                        ui.interact(rect, egui::Id::new("warnings-button"), egui::Sense::click());
+
+                    if response.hovered() {
+                        let hovered = ui.visuals().widgets.hovered;
+                        ui.painter()
+                            .rect_stroke(rect, hovered.corner_radius, hovered.bg_stroke);
+                    }
+                    if response.clicked() {
+                        self.warning = true;
+                    }
                 }
             });
         }
@@ -223,6 +266,7 @@ impl Gui {
         if self.warning {
             self.warning_window(ctx, enabled);
         }
+        self.show_update_notification(ctx, enabled);
     }
 
     /// Create a file system watcher.
@@ -519,6 +563,32 @@ impl Gui {
                         });
                 });
 
+                // Update check frequency
+                ui.horizontal(|ui| {
+                    let update_check = self.config.get_update_check();
+
+                    ui.label("Update checks:");
+                    egui::ComboBox::from_id_source("update-check-preference")
+                        .selected_text(update_check)
+                        .show_ui(ui, |ui| {
+                            let choices = [
+                                UpdateFrequency::Never,
+                                UpdateFrequency::Daily,
+                                UpdateFrequency::Weekly,
+                            ];
+                            for choice in &choices {
+                                let checked = update_check == *choice;
+                                let response = ui.selectable_label(checked, format!("{}", choice));
+                                if response.clicked() {
+                                    self.config.set_update_check(*choice);
+                                    self.event_loop_proxy
+                                        .send_event(UserEvent::UpdateCheck)
+                                        .expect("Event loop must exist");
+                                }
+                            }
+                        });
+                });
+
                 // Setup exports path selection
                 ui.horizontal(|ui| {
                     let setups_path = self.config.get_setups_path();
@@ -552,7 +622,7 @@ impl Gui {
                 ui.separator();
                 ui.label("Column colors:");
                 ui.horizontal_wrapped(|ui| {
-                    let colors = self.config.mut_colors();
+                    let colors = self.config.colors_mut();
                     let mut changed = false;
                     let mut to_delete = None;
 
@@ -584,7 +654,7 @@ impl Gui {
 
                 ui.label("Diff colors:");
                 ui.horizontal_wrapped(|ui| {
-                    let colors = self.config.mut_diff_colors();
+                    let colors = self.config.diff_colors_mut();
                     let old_colors = *colors;
 
                     color_edit_button_srgba(ui, &mut colors.0, Alpha::Opaque);
@@ -685,6 +755,14 @@ impl Gui {
         }
     }
 
+    /// Add a warning to the GUI.
+    ///
+    /// The new warning will be shown to the user if it is the only one, or else it will wait in a
+    /// queue until older warnings have been acknowledged.
+    pub(crate) fn add_warning(&mut self, warn: ShowWarning) {
+        self.show_warnings.push_front(warn);
+    }
+
     /// Show warning window.
     fn warning_window(&mut self, ctx: &egui::CtxRef, enabled: bool) {
         let mut window_open = self.warning;
@@ -748,6 +826,41 @@ impl Gui {
         }
 
         self.warning = window_open;
+    }
+
+    /// Add a n update notification to the GUI.
+    pub(crate) fn add_update_notification(&mut self, notification: ReleaseBody) {
+        self.show_update_notification = Some(notification);
+    }
+
+    /// Show update notification window.
+    fn show_update_notification(&mut self, ctx: &egui::CtxRef, enabled: bool) {
+        let update_notification = self.show_update_notification.as_ref();
+        if let Some(update_notification) = update_notification {
+            egui::Window::new("New update available")
+                .open(&mut self.update_notification)
+                .collapsible(false)
+                .default_pos((125.0, 125.0))
+                .fixed_size((350.0, 120.0))
+                .show(ctx, |ui| {
+                    let size = ui.spacing().interact_size.y;
+
+                    ui.set_enabled(enabled);
+
+                    ui.label(concat!(
+                        "You are using version: ",
+                        env!("CARGO_PKG_VERSION"),
+                    ));
+                    ui.label(format!("New version: {}", update_notification.name));
+                    ui.add_space(size);
+                    ui.label("Release notes:");
+                    ui.label(&update_notification.body);
+
+                    ui.separator();
+
+                    ui.hyperlink_to("Download update", &update_notification.html_url);
+                });
+        }
     }
 
     /// Add a tooltip to the GUI.

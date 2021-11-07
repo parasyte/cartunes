@@ -20,6 +20,10 @@ colors = [
 background_decrease = "#ff5050"
 background_increase = "#50ff50"
 
+# Frequency of update checks.
+# Acceptable values are "never", "daily", "weekly".
+update_check = "never"
+
 [window]
 
 

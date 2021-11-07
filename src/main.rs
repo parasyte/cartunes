@@ -36,6 +36,8 @@ mod gpu;
 mod gui;
 mod setup;
 mod str_ext;
+mod timer;
+mod updates;
 
 /// Application error handling.
 #[derive(Debug, Error)]
@@ -98,7 +100,14 @@ fn create_window() -> Result<(EventLoop<UserEvent>, winit::window::Window, Gpu, 
         let theme = config.theme().as_winit_theme(&window);
         let gui = Gui::new(config, setups, event_loop.create_proxy(), errors, warnings)?;
         let gpu = Gpu::new(&window, window_size)?;
-        let framework = Framework::new(window_size, scale_factor, theme, gui, &gpu);
+        let framework = Framework::new(
+            window_size,
+            scale_factor,
+            theme,
+            gui,
+            &gpu,
+            event_loop.create_proxy(),
+        );
 
         (gpu, framework)
     };
@@ -153,6 +162,12 @@ fn main() -> Result<(), Error> {
                     let theme = theme.as_winit_theme(&window);
                     framework.change_theme(theme, true);
                     window.request_redraw();
+                }
+                UserEvent::UpdateCheck => {
+                    framework.recreate_update_check();
+                }
+                UserEvent::UpdateAvailable(notification) => {
+                    framework.add_update_notification(notification);
                 }
                 _ => (),
             },

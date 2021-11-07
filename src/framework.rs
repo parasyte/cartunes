@@ -2,7 +2,8 @@
 
 use crate::config::{Config, Error as ConfigError, UserTheme};
 use crate::gpu::Gpu;
-use crate::gui::{ErrorButton, Gui, ShowError};
+use crate::gui::{ErrorButton, Gui, ShowError, ShowWarning};
+use crate::updates::{ReleaseBody, UpdateChecker};
 use directories::ProjectDirs;
 use egui::{ClippedMesh, CtxRef};
 use egui_wgpu_backend::{BackendError, RenderPass, ScreenDescriptor};
@@ -25,6 +26,8 @@ pub(crate) struct Framework {
     paint_jobs: Vec<ClippedMesh>,
     theme: Option<Theme>,
     gui: Gui,
+    update_checker: Option<UpdateChecker>,
+    event_loop_proxy: EventLoopProxy<UserEvent>,
 }
 
 /// Framework errors.
@@ -51,6 +54,12 @@ pub(crate) enum UserEvent {
 
     /// Change the theme preference.
     Theme(UserTheme),
+
+    /// Change the update check preference.
+    UpdateCheck,
+
+    /// Show update message.
+    UpdateAvailable(ReleaseBody),
 }
 
 /// How the user wants to handle errors with reading the config file.
@@ -72,6 +81,7 @@ impl Framework {
         theme: Theme,
         gui: Gui,
         gpu: &Gpu,
+        event_loop_proxy: EventLoopProxy<UserEvent>,
     ) -> Self {
         let width = size.width;
         let height = size.height;
@@ -90,7 +100,7 @@ impl Framework {
         egui_ctx.set_fonts(font_definitions);
         egui_ctx.set_style(style);
 
-        Self {
+        let mut result = Self {
             egui_ctx,
             egui_state,
             screen_descriptor,
@@ -98,7 +108,12 @@ impl Framework {
             paint_jobs: Vec::new(),
             theme: None,
             gui,
-        }
+            update_checker: None,
+            event_loop_proxy,
+        };
+        result.create_update_checker();
+
+        result
     }
 
     /// Handle input events from the window manager.
@@ -234,6 +249,38 @@ impl Framework {
         }
     }
 
+    /// Create an update checker.
+    ///
+    /// Adds a warning window if the checker cannot be created.
+    fn create_update_checker(&mut self) {
+        self.update_checker = match UpdateChecker::new(
+            self.event_loop_proxy.clone(),
+            self.gui.config.get_update_check(),
+        ) {
+            Ok(update_checker) => update_checker,
+            Err(err) => {
+                let warn = ShowWarning::new(err, "Error while creating update checker");
+                self.gui.add_warning(warn);
+
+                None
+            }
+        };
+    }
+
+    /// Set the update check frequency.
+    pub(crate) fn recreate_update_check(&mut self) {
+        // Stop the old update checker
+        if let Some(update_check) = self.update_checker.take() {
+            if let Err(err) = update_check.stop() {
+                let warn = ShowWarning::new(err, "Error while stopping update checker");
+                self.gui.add_warning(warn);
+            }
+        }
+
+        // Create a new update checker
+        self.create_update_checker();
+    }
+
     /// Try to save the configuration with the current window geometry.
     ///
     /// Returns true on success. When saving fails, the error is shown to the user and `false` is
@@ -277,6 +324,11 @@ impl Framework {
     pub(crate) fn add_error(&mut self, err: ShowError) {
         self.gui.add_error(err);
     }
+
+    /// Add an update notification to the GUI.
+    pub(crate) fn add_update_notification(&mut self, notification: ReleaseBody) {
+        self.gui.add_update_notification(notification);
+    }
 }
 
 /// Configure the theme based on system settings.
@@ -285,6 +337,11 @@ fn update_theme(theme: &mut Option<Theme>, ctx: &egui::CtxRef) {
         // Set the style
         ctx.set_style(create_style(theme));
     }
+}
+
+pub(crate) fn cache_path() -> PathBuf {
+    ProjectDirs::from("org", "KodeWerx", "CarTunes")
+        .map_or_else(|| PathBuf::from("."), |dir| dir.cache_dir().to_path_buf())
 }
 
 /// Get the application configuration path.
