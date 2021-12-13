@@ -183,7 +183,6 @@ impl UpdateCheckerThread {
         receiver: Receiver<UpdateCheckerMessage>,
         duration: Duration,
     ) -> Result<Self, Error> {
-        // TODO: Load from save directory...
         let persist = Persist::new()?;
 
         Ok(Self {
@@ -195,70 +194,67 @@ impl UpdateCheckerThread {
         })
     }
 
-    // TODO: Replace this async runner with a simple threaded runner.
-    // - Needs mpsc with a message type for:
-    //   - Stop
-    //   - HTTP response
-    //   - HTTP request timeout
     /// Periodically check for updates.
     fn run(mut self) {
-        let mut _timer = Timer::new(
-            self.duration,
-            self.sender.clone(),
-            UpdateCheckerMessage::Ping,
-            UpdateCheckerMessage::Timeout,
-        );
-
         // Send update notification on startup if it has been persisted
         self.send_update_notification();
 
         // Perform initial update check
-        self.check();
+        let mut duration = self.check();
+
+        // Create a timer to periodically ping our message loop
+        let mut _timer = Timer::new(
+            duration,
+            self.sender.clone(),
+            UpdateCheckerMessage::Ping,
+            UpdateCheckerMessage::Timeout,
+        );
 
         for msg in self.receiver.take().expect("Missing receiver").iter() {
             match msg {
                 UpdateCheckerMessage::Stop => break,
                 UpdateCheckerMessage::Ping => continue,
                 UpdateCheckerMessage::Timeout => {
+                    duration = self.check();
+
+                    // Update the timer
                     _timer = Timer::new(
-                        self.duration,
+                        duration,
                         self.sender.clone(),
                         UpdateCheckerMessage::Ping,
                         UpdateCheckerMessage::Timeout,
                     );
-
-                    self.check();
                 }
             }
         }
     }
 
     /// Check for the latest version.
-    fn check(&mut self) {
+    fn check(&mut self) -> Duration {
         // Check last update time
         match self.persist.last_check() {
             Ok(last_check) => {
                 if last_check < self.duration {
-                    return;
+                    return self.duration - last_check;
                 }
             }
             Err(error) => {
                 error!("SystemTime error: {:?}", error);
-                return;
+                return self.duration;
             }
         }
 
         // Send API request
-        let req = ureq::get(RELEASES_URL);
-        let req = req.timeout(Duration::from_secs(HTTP_TIMEOUT));
-        let req = req.set("Accept", "application/vnd.github.v3+json");
-        let req = req.set("User-Agent", USER_AGENT);
+        let req = ureq::get(RELEASES_URL)
+            .timeout(Duration::from_secs(HTTP_TIMEOUT))
+            .set("Accept", "application/vnd.github.v3+json")
+            .set("User-Agent", USER_AGENT);
 
         let res = match req.call() {
             Ok(res) => res,
             Err(error) => {
                 error!("HTTP request error: {:?}", error);
-                return;
+                return self.duration;
             }
         };
 
@@ -267,7 +263,7 @@ impl UpdateCheckerThread {
             Ok(body) => body,
             Err(error) => {
                 error!("HTTP response error: {:?}", error);
-                return;
+                return self.duration;
             }
         };
 
@@ -276,14 +272,14 @@ impl UpdateCheckerThread {
             Ok(version) => version,
             Err(error) => {
                 error!("SemVer parse error: {:?}", error);
-                return;
+                return self.duration;
             }
         };
 
         // Save the last update time
         if let Err(error) = self.persist.update_last_check() {
             error!("SystemTime error: {:?}", error);
-            return;
+            return self.duration;
         }
 
         // Update persistence
@@ -295,11 +291,13 @@ impl UpdateCheckerThread {
         // Write persistence to the file system
         if let Err(error) = self.persist.write_toml() {
             error!("Persistence error: {:?}", error);
-            return;
+            return self.duration;
         }
 
         // Send the update notification
         self.send_update_notification();
+
+        self.duration
     }
 
     fn send_update_notification(&self) {
