@@ -79,7 +79,6 @@ jobs:
         with:
           command: build
           args: --all --all-features
-
     strategy:
       fail-fast: true
       matrix:
@@ -88,47 +87,3 @@ jobs:
           # Windows
           - i686-pc-windows-msvc
           - x86_64-pc-windows-msvc
-
-  macos:
-    name: macOS
-    runs-on: macos-latest
-    needs: lints
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 50
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: ${{ matrix.channel }}
-          target: ${{ matrix.target }}
-          override: true
-      - name: Cargo test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --all
-      - name: Cargo test all-features
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --all --all-features
-      - name: Cargo build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --all
-      - name: Cargo build all-features
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --all --all-features
-
-    strategy:
-      fail-fast: true
-      matrix:
-        channel: [stable, beta, nightly]
-        target:
-          # macOS
-          - x86_64-apple-darwin
