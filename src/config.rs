@@ -1,5 +1,6 @@
 //! Application configuration parsing and validation.
 
+use crate::updates::UpdateFrequency;
 use directories::UserDirs;
 use patricia_tree::PatriciaSet;
 use std::collections::HashMap;
@@ -60,6 +61,9 @@ pub(crate) struct Config {
     /// User's diff color choices.
     diff_colors: (egui::Color32, egui::Color32),
 
+    /// User's update check frequency choice.
+    update_check: UpdateFrequency,
+
     /// Map raw track IDs to unique track IDs.
     track_ids: PatriciaSet,
 
@@ -115,6 +119,7 @@ impl Config {
             theme: UserTheme::Auto,
             colors: Vec::new(),
             diff_colors: (egui::Color32::TRANSPARENT, egui::Color32::TRANSPARENT),
+            update_check: UpdateFrequency::default(),
             track_ids: PatriciaSet::new(),
             tracks: HashMap::new(),
             cars: HashMap::new(),
@@ -167,10 +172,18 @@ impl Config {
             .unwrap_or("auto");
         let theme = UserTheme::from_str(theme);
 
+        let update_check = doc
+            .get("config")
+            .and_then(|t| t.get("update_check"))
+            .and_then(|t| t.as_str())
+            .map(UpdateFrequency::from)
+            .unwrap_or_default();
+
         let mut config = Self::new(doc_path, min_size);
         config.doc = doc;
-        config.theme = theme;
         config.update_setups_path(setups_path);
+        config.update_theme(theme);
+        config.set_update_check(update_check);
         config.load_tracks_and_cars()?;
         config.load_colors()?;
 
@@ -267,7 +280,7 @@ impl Config {
     }
 
     /// Modify user's color-coding choices.
-    pub(crate) fn mut_colors(&mut self) -> &mut Vec<egui::Color32> {
+    pub(crate) fn colors_mut(&mut self) -> &mut Vec<egui::Color32> {
         &mut self.colors
     }
 
@@ -302,8 +315,19 @@ impl Config {
     }
 
     /// Modify user's diff color choices.
-    pub(crate) fn mut_diff_colors(&mut self) -> &mut (egui::Color32, egui::Color32) {
+    pub(crate) fn diff_colors_mut(&mut self) -> &mut (egui::Color32, egui::Color32) {
         &mut self.diff_colors
+    }
+
+    /// Update the frequency for update checks.
+    pub(crate) fn get_update_check(&self) -> UpdateFrequency {
+        self.update_check
+    }
+
+    /// Update the frequency for update checks.
+    pub(crate) fn set_update_check(&mut self, update_check: UpdateFrequency) {
+        self.update_check = update_check;
+        self.doc["config"]["update_check"] = toml_edit::value(self.update_check.as_str());
     }
 
     /// Load track and car info from config.
