@@ -57,7 +57,17 @@ fn test_load_dir() {
     assert_eq!(file_name, "baseline");
     assert_eq!(porche911.keys().len(), 12);
 
-    assert_eq!(setups.tracks().len(), 4);
+    let cars = &tracks["Watkins Glen International - Boot"]["Mercedes-AMG W12 E Performance"];
+    assert_eq!(cars.len(), 1);
+    let SetupInfo {
+        setup: mercedes,
+        name: file_name,
+        ..
+    } = &cars[0];
+    assert_eq!(file_name, "iracing_w12_baseline_glenboot");
+    assert_eq!(mercedes.keys().len(), 16);
+
+    assert_eq!(setups.tracks().len(), 5);
 }
 
 #[test]
@@ -710,6 +720,185 @@ fn test_setup_porche_911_gt3_r() {
 }
 
 #[test]
+fn test_setup_mercedes_amg_w12() {
+    let config = Config::new("/tmp/some/path.toml", PhysicalSize::new(0, 0));
+    let (track_name, car_name, setup) =
+        setup_from_html("./fixtures/iracing_w12_baseline_glenboot.htm", &config).unwrap();
+
+    assert_eq!(track_name, "Watkins Glen International - Boot".to_string());
+    assert_eq!(car_name, "Mercedes-AMG W12 E Performance".to_string());
+    assert_eq!(setup.keys().len(), 16);
+
+    dbg!(&setup);
+
+    // Tire Compound
+    let expected = create_ordered_multimap(&[("Tire compound", "Medium")]);
+    let left_front_tire = setup.get("Tire Compound").unwrap();
+    assert_eq!(left_front_tire, &expected);
+
+    // Left Front Tire
+    let expected = create_ordered_multimap(&[
+        ("Starting pressure", "22.0 psi"),
+        ("Last hot pressure", "22.0 psi"),
+        ("Last temps O M I", "172F"),
+        ("Last temps O M I", "172F"),
+        ("Last temps O M I", "172F"),
+        ("Tread remaining", "100%"),
+        ("Tread remaining", "100%"),
+        ("Tread remaining", "100%"),
+    ]);
+    let left_front_tire = setup.get("Left Front Tire").unwrap();
+    assert_eq!(left_front_tire, &expected);
+
+    // Left Rear Tire
+    let expected = create_ordered_multimap(&[
+        ("Starting pressure", "20.0 psi"),
+        ("Last hot pressure", "20.0 psi"),
+        ("Last temps O M I", "171F"),
+        ("Last temps O M I", "171F"),
+        ("Last temps O M I", "171F"),
+        ("Tread remaining", "100%"),
+        ("Tread remaining", "100%"),
+        ("Tread remaining", "100%"),
+    ]);
+    let left_rear_tire = setup.get("Left Rear Tire").unwrap();
+    assert_eq!(left_rear_tire, &expected);
+
+    // Right Front Tire
+    let expected = create_ordered_multimap(&[
+        ("Starting pressure", "22.0 psi"),
+        ("Last hot pressure", "22.0 psi"),
+        ("Last temps I M O", "172F"),
+        ("Last temps I M O", "172F"),
+        ("Last temps I M O", "172F"),
+        ("Tread remaining", "100%"),
+        ("Tread remaining", "100%"),
+        ("Tread remaining", "100%"),
+    ]);
+    let right_front_tire = setup.get("Right Front Tire").unwrap();
+    assert_eq!(right_front_tire, &expected);
+
+    // Right Rear Tire
+    let expected = create_ordered_multimap(&[
+        ("Starting pressure", "20.0 psi"),
+        ("Last hot pressure", "20.0 psi"),
+        ("Last temps I M O", "171F"),
+        ("Last temps I M O", "171F"),
+        ("Last temps I M O", "171F"),
+        ("Tread remaining", "100%"),
+        ("Tread remaining", "100%"),
+        ("Tread remaining", "100%"),
+    ]);
+    let right_rear_tire = setup.get("Right Rear Tire").unwrap();
+    assert_eq!(right_rear_tire, &expected);
+
+    // Aero Package
+    let expected = create_ordered_multimap(&[
+        ("Downforce trim", "High"),
+        ("Front flap offset", "1.75 deg"),
+        ("Rear wing Gurney", "0.591 in"),
+    ]);
+    let aero_package = setup.get("Aero Package").unwrap();
+    assert_eq!(aero_package, &expected);
+
+    // Aero Calculator
+    let expected = create_ordered_multimap(&[
+        ("Front RH at speed", r#"0.512""#),
+        ("Rear RH at speed", r#"2.835""#),
+        ("Aero balance", "44.80%"),
+        ("Downforce to drag", "4.393:1"),
+    ]);
+    let aero_calculator = setup.get("Aero Calculator").unwrap();
+    assert_eq!(aero_calculator, &expected);
+
+    // Front
+    let expected = create_ordered_multimap(&[
+        ("Transparent halo", "No"),
+        ("Weight dist", "48.0%"),
+        ("Heave rate", "4000 lbs/in"),
+        ("Roll rate", "2284 lb/in"),
+        ("Ride height", "0.950 in"),
+    ]);
+    let front = setup.get("Front").unwrap();
+    assert_eq!(front, &expected);
+
+    // Left Front
+    let expected = create_ordered_multimap(&[
+        ("Corner weight", "499 lbs"),
+        ("Camber", "-3.48 deg"),
+        ("Toe-in", "-0.24 deg"),
+    ]);
+    let left_front = setup.get("Left Front").unwrap();
+    assert_eq!(left_front, &expected);
+
+    // Left Rear
+    let expected = create_ordered_multimap(&[
+        ("Corner weight", "540 lbs"),
+        ("Camber", "-1.95 deg"),
+        ("Toe-in", "+0.10 deg"),
+    ]);
+    let left_rear = setup.get("Left Rear").unwrap();
+    assert_eq!(left_rear, &expected);
+
+    // Right Front
+    let expected = create_ordered_multimap(&[
+        ("Corner weight", "499 lbs"),
+        ("Camber", "-3.48 deg"),
+        ("Toe-in", "-0.24 deg"),
+    ]);
+    let right_front = setup.get("Right Front").unwrap();
+    assert_eq!(right_front, &expected);
+
+    // Right Rear
+    let expected = create_ordered_multimap(&[
+        ("Corner weight", "540 lbs"),
+        ("Camber", "-1.95 deg"),
+        ("Toe-in", "+0.10 deg"),
+    ]);
+    let right_rear = setup.get("Right Rear").unwrap();
+    assert_eq!(right_rear, &expected);
+
+    // Rear
+    let expected = create_ordered_multimap(&[
+        ("Fuel level", "242.5 lb"),
+        ("Heave rate", "286 lbs/in"),
+        ("Roll rate", "1199 lb/in"),
+        ("Ride height", "5.442 in"),
+    ]);
+    let rear = setup.get("Rear").unwrap();
+    assert_eq!(rear, &expected);
+
+    // Differential
+    let expected = create_ordered_multimap(&[
+        ("Preload", "0 ft-lbs"),
+        ("Entry", "1 (ENTRY)"),
+        ("Middle", "2 (MID)"),
+        ("High speed", "3 (HISPD)"),
+    ]);
+    let differential = setup.get("Differential").unwrap();
+    assert_eq!(differential, &expected);
+
+    // Power Unit Config
+    let expected = create_ordered_multimap(&[
+        ("MGU-K deploy mode", "Balanced"),
+        ("Engine braking", "10 (EB)"),
+    ]);
+    let power_unit_config = setup.get("Power Unit Config").unwrap();
+    assert_eq!(power_unit_config, &expected);
+
+    // Brake System Config
+    let expected = create_ordered_multimap(&[
+        ("Base brake bias", "57.0% (BBAL)"),
+        ("Dynamic ramping", "50% pedal"),
+        ("Brake migration", "1 (BMIG)"),
+        ("Total brake bias", "57.0% front"),
+        ("Brake magic modifier", "0.75"),
+    ]);
+    let brake_system_config = setup.get("Brake System Config").unwrap();
+    assert_eq!(brake_system_config, &expected);
+}
+
+#[test]
 fn test_add_setup() {
     use UpdateKind::*;
 
@@ -761,10 +950,11 @@ fn test_remove_setup() {
 
     fn assert_removed(setups: &Setups) {
         let tracks = setups.tracks();
-        assert_eq!(tracks.len(), 3);
+        assert_eq!(tracks.len(), 4);
         assert!(tracks.contains_key("Centripetal Circuit"));
         assert!(tracks.contains_key("Charlotte Motor Speedway - Legends Oval"));
         assert!(tracks.contains_key("Circuit des 24 Heures du Mans - 24 Heures du Mans"));
+        assert!(tracks.contains_key("Watkins Glen International - Boot"));
     }
 
     let mut config = Config::new("/tmp/some/path.toml", PhysicalSize::new(0, 0));
@@ -773,11 +963,12 @@ fn test_remove_setup() {
     let mut setups = Setups::new(&mut warnings, &config);
 
     let tracks = setups.tracks();
-    assert_eq!(tracks.len(), 4);
+    assert_eq!(tracks.len(), 5);
     assert!(tracks.contains_key("Centripetal Circuit"));
     assert!(tracks.contains_key("Charlotte Motor Speedway - Legends Oval"));
     assert!(tracks.contains_key("Circuit des 24 Heures du Mans - 24 Heures du Mans"));
     assert!(tracks.contains_key("Nürburgring Combined"));
+    assert!(tracks.contains_key("Watkins Glen International - Boot"));
 
     let mut result = Vec::new();
     let path = Path::new("./fixtures/baseline.htm")
