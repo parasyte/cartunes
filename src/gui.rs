@@ -9,6 +9,7 @@ use copypasta::{ClipboardContext, ClipboardProvider};
 use egui::widgets::color_picker::{color_edit_button_srgba, Alpha};
 use egui::{CtxRef, Widget};
 use hotwatch::Hotwatch;
+use std::borrow::Cow;
 use std::collections::{HashMap, VecDeque};
 use std::path::Path;
 use std::time::{Duration, Instant};
@@ -521,8 +522,10 @@ impl Gui {
 
                 // Setup exports path selection
                 ui.horizontal(|ui| {
-                    let setups_path = self.config.get_setups_path();
-                    let label = setups_path.to_string_lossy().ellipsis(50);
+                    // XXX: Workaround for https://github.com/PolyMeilex/rfd/issues/32
+                    let setups_path = self.config.get_setups_path().to_string_lossy();
+                    let setups_path = setups_path.strip_prefix(r"\\?\").unwrap_or(&setups_path);
+                    let label = Cow::Borrowed(setups_path).ellipsis(50);
 
                     ui.label("Setup exports path:");
                     if egui::Label::new(label)
