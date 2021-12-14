@@ -35,7 +35,7 @@ rfd = "0.5"
 semver = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
-toml_edit = "0.8"
+toml_edit = "0.12"
 unicode-segmentation = "1.7"
 ureq = { version = "2.3", features = ["json"] }
 walkdir = "2.3"
