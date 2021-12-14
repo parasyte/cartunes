@@ -430,12 +430,21 @@ fn setup_from_html<P: AsRef<Path>>(
         });
 
     // Populate the Setup
+    let mut group_name = String::new();
     let mut setup = Setup::default();
     for group in groups {
-        let mut group_name = group.text_contents().capitalize_words().to_string();
-        group_name.retain(|ch| ch != ':');
-
         let props = get_properties(group.as_node().next_sibling());
+
+        // Get the name of the first group following one with properties
+        if group_name.is_empty() {
+            group_name = group.text_contents().capitalize_words().to_string();
+            group_name.retain(|ch| ch != ':');
+        }
+
+        // Skip remaining groups until properties are found
+        if props.is_empty() {
+            continue;
+        }
 
         // Heuristic that determines whether the group corresponds to a tire
         if props.keys().any(|k| k.starts_with("Tread"))
@@ -454,6 +463,9 @@ fn setup_from_html<P: AsRef<Path>>(
         if setup.insert(group_name.clone(), props).is_some() {
             return Err(Error::DuplicatePropGroup(group_name));
         }
+
+        // Clear the last known group name so it can be recreated when needed
+        group_name.clear();
     }
 
     Ok((track_name, car_name, setup))
