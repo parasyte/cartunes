@@ -10,7 +10,7 @@
 //! the Metal graphics API on macOS. Dark mode and light mode OS themes are both included, although
 //! automatic theme switching
 //! [may not work on all platforms](https://github.com/rust-windowing/winit/issues/1549).
-#![cfg_attr(not(any(test, debug_assertions)), windows_subsystem = "windows")]
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![deny(clippy::all)]
 
 use crate::framework::{ConfigHandler, Framework, UserEvent};
