@@ -33,6 +33,12 @@ impl<'a> Ellipsis<'a> for Cow<'a, str> {
     }
 }
 
+impl<'a> Ellipsis<'a> for &'a str {
+    fn ellipsis(self, max_length: usize) -> Cow<'a, str> {
+        Cow::Borrowed(self).ellipsis(max_length)
+    }
+}
+
 /// An extension trait for strings that adds a sentence capitalization method.
 pub(crate) trait Capitalize<'a> {
     /// Capitalize words using ASCII uppercase/lowercase.

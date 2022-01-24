@@ -10,7 +10,6 @@ use copypasta::{ClipboardContext, ClipboardProvider};
 use egui::widgets::color_picker::{color_edit_button_srgba, Alpha};
 use egui::{CtxRef, Widget};
 use hotwatch::Hotwatch;
-use std::borrow::Cow;
 use std::collections::{HashMap, VecDeque};
 use std::path::Path;
 use std::time::{Duration, Instant};
@@ -146,18 +145,21 @@ impl Gui {
         egui::TopBottomPanel::top("menubar-container").show(ctx, |ui| {
             ui.set_enabled(enabled);
             egui::menu::bar(ui, |ui| {
-                egui::menu::menu(ui, "File", |ui| {
+                ui.menu_button("File", |ui| {
                     ui.set_min_width(200.0);
                     if ui.button("Preferences").clicked() {
+                        ui.close_menu();
                         self.preferences = true;
                     }
                 });
-                egui::menu::menu(ui, "Help", |ui| {
+                ui.menu_button("Help", |ui| {
                     ui.set_min_width(200.0);
                     if ui.button("About CarTunes...").clicked() {
+                        ui.close_menu();
                         self.about = true;
                     }
                     if ui.button("Support CarTunes on Patreon").clicked() {
+                        ui.close_menu();
                         if let Err(err) = webbrowser::open("https://www.patreon.com/blipjoy") {
                             let warning = ShowWarning::new(err, "Unable to open web browser.");
                             self.show_warnings.push_front(warning);
@@ -487,9 +489,11 @@ impl Gui {
                             .cloned()
                             .unwrap_or_else(|| ui.visuals().text_color());
 
-                        let checkbox = egui::Checkbox::new(&mut checked, info.name())
-                            .text_color(color)
-                            .ui(ui);
+                        let checkbox = egui::Checkbox::new(
+                            &mut checked,
+                            egui::RichText::new(info.name()).color(color),
+                        )
+                        .ui(ui);
                         if checkbox.clicked() {
                             if checked {
                                 selected_setups.push(i);
@@ -548,12 +552,12 @@ impl Gui {
 
                     ui.label("Theme:");
                     egui::ComboBox::from_id_source("theme-preference")
-                        .selected_text(current_theme)
+                        .selected_text(current_theme.to_string())
                         .show_ui(ui, |ui| {
                             let choices = [UserTheme::Auto, UserTheme::Dark, UserTheme::Light];
                             for choice in &choices {
                                 let checked = current_theme == *choice;
-                                let response = ui.selectable_label(checked, format!("{}", choice));
+                                let response = ui.selectable_label(checked, choice.to_string());
                                 if response.clicked() {
                                     self.config.update_theme(*choice);
                                     self.event_loop_proxy
@@ -570,7 +574,7 @@ impl Gui {
 
                     ui.label("Update checks:");
                     egui::ComboBox::from_id_source("update-check-preference")
-                        .selected_text(update_check)
+                        .selected_text(update_check.to_string())
                         .show_ui(ui, |ui| {
                             let choices = [
                                 UpdateFrequency::Never,
@@ -579,7 +583,7 @@ impl Gui {
                             ];
                             for choice in &choices {
                                 let checked = update_check == *choice;
-                                let response = ui.selectable_label(checked, format!("{}", choice));
+                                let response = ui.selectable_label(checked, choice.to_string());
                                 if response.clicked() {
                                     self.config.set_update_check(*choice);
                                     self.event_loop_proxy
@@ -592,14 +596,19 @@ impl Gui {
 
                 // Setup exports path selection
                 ui.horizontal(|ui| {
-                    // XXX: Workaround for https://github.com/PolyMeilex/rfd/issues/32
-                    let setups_path = self.config.get_setups_path().to_string_lossy();
-                    let setups_path = setups_path.strip_prefix(r"\\?\").unwrap_or(&setups_path);
-                    let label = Cow::Borrowed(setups_path).ellipsis(50);
+                    let setups_path = self.config.get_setups_path();
+
+                    // Strip Windows path prefixes for display in the GUI
+                    let label = setups_path.to_string_lossy();
+                    let label = label
+                        .strip_prefix(r"\\?\UNC\")
+                        .or_else(|| label.strip_prefix(r"\\?\"))
+                        .or_else(|| label.strip_prefix(r"\??\"))
+                        .unwrap_or(&label)
+                        .ellipsis(50);
 
                     ui.label("Setup exports path:");
-                    if egui::Label::new(label)
-                        .code()
+                    if egui::Label::new(egui::RichText::new(label).code())
                         .sense(egui::Sense::click())
                         .ui(ui)
                         .clicked()
@@ -736,11 +745,13 @@ impl Gui {
                                 let action = err.buttons.0.action;
                                 action();
                                 result = false;
-                            } else if egui::Button::new(&err.buttons.1.label)
-                                .text_color(egui::Color32::BLACK)
-                                .fill(red)
-                                .ui(ui)
-                                .clicked()
+                            } else if egui::Button::new(
+                                egui::RichText::new(&err.buttons.1.label)
+                                    .color(egui::Color32::BLACK),
+                            )
+                            .fill(red)
+                            .ui(ui)
+                            .clicked()
                             {
                                 let action = err.buttons.1.action;
                                 action();
