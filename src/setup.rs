@@ -411,7 +411,7 @@ fn setup_from_html<P: AsRef<Path>>(
     let track_id = config
         .track_ids()
         .get_longest_common_prefix(&track_id)
-        .unwrap_or(track_id.as_bytes());
+        .unwrap_or_else(|| track_id.as_bytes());
     let track_id = String::from_utf8_lossy(track_id).to_string();
 
     // Map track ID to a human-readable name
