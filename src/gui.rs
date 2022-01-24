@@ -484,8 +484,7 @@ impl Gui {
                         let position = selected_setups.iter().position(|&v| v == i);
                         let mut checked = position.is_some();
                         let color = position
-                            .map(|i| colors.iter().cycle().nth(i))
-                            .flatten()
+                            .and_then(|i| colors.iter().cycle().nth(i))
                             .cloned()
                             .unwrap_or_else(|| ui.visuals().text_color());
 

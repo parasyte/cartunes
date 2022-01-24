@@ -339,7 +339,7 @@ impl Config {
                     .as_str()
                     .ok_or_else(|| Error::type_error(&format!("tracks.{}", id), "string"))?;
 
-                self.track_ids.insert(id.to_string());
+                self.track_ids.insert(id);
                 self.tracks.insert(id.to_string(), name.to_string());
             }
         } else if !table.is_none() {
