@@ -27,6 +27,7 @@ human-sort = "0.2"
 hotwatch = "0.4"
 kuchiki = "0.8"
 log = "0.4"
+native-tls = "0.2"
 ordered-multimap = "0.4"
 patricia_tree = "0.3"
 pollster = "0.2"
@@ -37,7 +38,7 @@ serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
 toml_edit = "0.13"
 unicode-segmentation = "1.7"
-ureq = { version = "2.3", features = ["json"] }
+ureq = { version = "2.3", default-features = false, features = ["gzip", "json", "native-tls"] }
 walkdir = "2.3"
 webbrowser = "0.5"
 wgpu = "0.12"
