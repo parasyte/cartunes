@@ -27,7 +27,7 @@ fn test_load_dir() {
     assert_eq!(file_name, "skip_barber_centripetal");
     assert_eq!(skip_barber.keys().len(), 6);
 
-    let cars = &tracks["Charlotte Motor Speedway - Legends Oval"]["Global Mazda MX-5 Cup"];
+    let cars = &tracks["Charlotte Motor Speedway"]["Global Mazda MX-5 Cup"];
     assert_eq!(cars.len(), 1);
     let SetupInfo {
         setup: mx5,
@@ -57,7 +57,7 @@ fn test_load_dir() {
     assert_eq!(file_name, "baseline");
     assert_eq!(porche911.keys().len(), 12);
 
-    let cars = &tracks["Watkins Glen International - Boot"]["Mercedes-AMG W12 E Performance"];
+    let cars = &tracks["Watkins Glen International"]["Mercedes-AMG W12 E Performance"];
     assert_eq!(cars.len(), 1);
     let SetupInfo {
         setup: mercedes,
@@ -169,10 +169,7 @@ fn test_setup_mx5() {
     let (track_name, car_name, setup) =
         setup_from_html("./fixtures/mx5_charlotte_legends_oval.htm", &config).unwrap();
 
-    assert_eq!(
-        track_name,
-        "Charlotte Motor Speedway - Legends Oval".to_string()
-    );
+    assert_eq!(track_name, "Charlotte Motor Speedway".to_string());
     assert_eq!(car_name, "Global Mazda MX-5 Cup".to_string());
     assert_eq!(setup.keys().len(), 6);
 
@@ -725,7 +722,7 @@ fn test_setup_mercedes_amg_w12() {
     let (track_name, car_name, setup) =
         setup_from_html("./fixtures/iracing_w12_baseline_glenboot.htm", &config).unwrap();
 
-    assert_eq!(track_name, "Watkins Glen International - Boot".to_string());
+    assert_eq!(track_name, "Watkins Glen International".to_string());
     assert_eq!(car_name, "Mercedes-AMG W12 E Performance".to_string());
     assert_eq!(setup.keys().len(), 16);
 
@@ -952,9 +949,9 @@ fn test_remove_setup() {
         let tracks = setups.tracks();
         assert_eq!(tracks.len(), 4);
         assert!(tracks.contains_key("Centripetal Circuit"));
-        assert!(tracks.contains_key("Charlotte Motor Speedway - Legends Oval"));
+        assert!(tracks.contains_key("Charlotte Motor Speedway"));
         assert!(tracks.contains_key("Circuit des 24 Heures du Mans - 24 Heures du Mans"));
-        assert!(tracks.contains_key("Watkins Glen International - Boot"));
+        assert!(tracks.contains_key("Watkins Glen International"));
     }
 
     let mut config = Config::new("/tmp/some/path.toml", PhysicalSize::new(0, 0));
@@ -965,10 +962,10 @@ fn test_remove_setup() {
     let tracks = setups.tracks();
     assert_eq!(tracks.len(), 5);
     assert!(tracks.contains_key("Centripetal Circuit"));
-    assert!(tracks.contains_key("Charlotte Motor Speedway - Legends Oval"));
+    assert!(tracks.contains_key("Charlotte Motor Speedway"));
     assert!(tracks.contains_key("Circuit des 24 Heures du Mans - 24 Heures du Mans"));
     assert!(tracks.contains_key("Nürburgring Combined"));
-    assert!(tracks.contains_key("Watkins Glen International - Boot"));
+    assert!(tracks.contains_key("Watkins Glen International"));
 
     let mut result = Vec::new();
     let path = Path::new("./fixtures/baseline.htm")
