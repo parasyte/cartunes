@@ -285,7 +285,7 @@ impl UpdateCheckerThread {
         // Update persistence
         self.persist.update_last_version(version);
         self.persist
-            .update_release_notes(body.body.replace("\r", ""));
+            .update_release_notes(body.body.replace('\r', ""));
         self.persist.update_url(body.html_url);
 
         // Write persistence to the file system

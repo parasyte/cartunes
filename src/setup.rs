@@ -389,7 +389,7 @@ fn setup_from_html<P: AsRef<Path>>(
         .split(" setup: ")
         .next()
         .ok_or(Error::MissingCar)?
-        .replace(" ", "_");
+        .replace(' ', "_");
 
     // Map car ID to a human-readable name
     let car_name = config
@@ -405,7 +405,7 @@ fn setup_from_html<P: AsRef<Path>>(
         .ok_or(Error::MissingTrack)?
         .1
         .trim()
-        .replace(" ", "_");
+        .replace(' ', "_");
 
     // Get the track unique identifier
     let track_id = config

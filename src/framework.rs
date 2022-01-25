@@ -8,7 +8,6 @@ use directories::ProjectDirs;
 use egui::{ClippedMesh, CtxRef};
 use egui_wgpu_backend::{BackendError, RenderPass, ScreenDescriptor};
 use font_loader::system_fonts::{self, FontPropertyBuilder};
-use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::path::PathBuf;
 use thiserror::Error;
@@ -139,17 +138,15 @@ impl Framework {
 
     /// Prepare egui.
     pub(crate) fn prepare(&mut self, window: &Window) {
-        // Begin the egui frame.
-        let raw_input = self.egui_state.take_egui_input(window);
-        self.egui_ctx.begin_frame(raw_input);
-
-        // Draw the application GUI.
         update_theme(&mut self.theme, &self.egui_ctx);
-        self.gui.ui(&self.egui_ctx, window);
 
-        // End the egui frame and create all paint jobs to prepare for rendering.
-        // TODO: Handle output.needs_repaint to avoid game-mode continuous redraws.
-        let (output, paint_commands) = self.egui_ctx.end_frame();
+        // Run the egui frame and create all paint jobs to prepare for rendering.
+        let raw_input = self.egui_state.take_egui_input(window);
+        let (output, paint_commands) = self.egui_ctx.run(raw_input, |egui_ctx| {
+            // Draw the application GUI.
+            self.gui.ui(egui_ctx, window);
+        });
+
         self.egui_state
             .handle_output(window, &self.egui_ctx, output);
         self.paint_jobs = self.egui_ctx.tessellate(paint_commands);
@@ -164,7 +161,7 @@ impl Framework {
     ) -> Result<(), BackendError> {
         // Upload all resources to the GPU.
         self.rpass
-            .update_texture(&gpu.device, &gpu.queue, &self.egui_ctx.texture());
+            .update_texture(&gpu.device, &gpu.queue, &self.egui_ctx.font_image());
         self.rpass.update_user_textures(&gpu.device, &gpu.queue);
         self.rpass.update_buffers(
             &gpu.device,
@@ -365,7 +362,7 @@ fn create_fonts() -> egui::FontDefinitions {
         .0;
     fonts
         .font_data
-        .insert("MonoSpace".to_owned(), Cow::from(font));
+        .insert("MonoSpace".to_owned(), egui::FontData::from_owned(font));
 
     let props = FontPropertyBuilder::new().family("sans-serif").build();
     let font = system_fonts::get(&props)
@@ -377,7 +374,7 @@ fn create_fonts() -> egui::FontDefinitions {
         .0;
     fonts
         .font_data
-        .insert("SansSerif".to_owned(), Cow::from(font));
+        .insert("SansSerif".to_owned(), egui::FontData::from_owned(font));
 
     // Set font families
     fonts
