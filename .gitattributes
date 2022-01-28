@@ -1,0 +1,2 @@
+# Test fixtures are generated data, and should be excluded from language stats
+fixtures/** linguist-generated
