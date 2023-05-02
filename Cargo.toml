@@ -27,6 +27,7 @@ human-sort = "0.2"
 hotwatch = "0.4"
 kuchiki = "0.8"
 log = "0.4"
+native-tls = "0.2"
 ordered-multimap = "0.4"
 patricia_tree = "0.3"
 pollster = "0.2"
@@ -37,12 +38,19 @@ serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
 toml_edit = "0.13"
 unicode-segmentation = "1.7"
-ureq = { version = "2.3", features = ["json"] }
+ureq = { version = "2.3", default-features = false, features = ["json", "native-tls"] }
 walkdir = "2.3"
 webbrowser = "0.5"
 wgpu = "0.12"
 winit = "0.26"
 winit_input_helper = "0.11"
+
+# Disable IDNA to reduce binary size by ~235 KB
+[dependencies.url]
+git = "https://github.com/parasyte/rust-url.git"
+rev = "4fce73cfde478ea1c5c8132ee1614ee741e49987"
+default-features = false
+features = ["disable_idna"]
 
 [target.'cfg(windows)'.build-dependencies]
 embed-resource = "1.6"
@@ -54,3 +62,6 @@ tempfile = "3.2"
 codegen-units = 1
 lto = true
 panic = "abort"
+
+[patch.crates-io]
+url = { git = "https://github.com/parasyte/rust-url.git", rev = "4fce73cfde478ea1c5c8132ee1614ee741e49987" }

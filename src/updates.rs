@@ -11,6 +11,7 @@ use semver::Version;
 use serde::Deserialize;
 use std::any::Any;
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
+use std::sync::Arc;
 use std::thread::JoinHandle;
 use std::time::Duration;
 use thiserror::Error;
@@ -245,7 +246,11 @@ impl UpdateCheckerThread {
         }
 
         // Send API request
-        let req = ureq::get(RELEASES_URL)
+        let agent = ureq::AgentBuilder::new()
+            .tls_connector(Arc::new(native_tls::TlsConnector::new().unwrap()))
+            .build();
+        let req = agent
+            .get(RELEASES_URL)
             .timeout(Duration::from_secs(HTTP_TIMEOUT))
             .set("Accept", "application/vnd.github.v3+json")
             .set("User-Agent", USER_AGENT);

@@ -199,9 +199,8 @@ impl Config {
         if let Some(parent) = self.doc_path.parent() {
             fs::create_dir_all(parent)?;
         }
-        let result = fs::write(&self.doc_path, toml)?;
 
-        Ok(result)
+        Ok(fs::write(&self.doc_path, toml)?)
     }
 
     /// Get window configuration if it's valid.
